@@ -1,8 +1,8 @@
-name: Update macro dashboard data
+name: Update macro dashboard data (FRED + yfinance only)
 
 on:
   schedule:
-    - cron: '0 0 20 * *'
+    - cron: '0 0 * * 1'
   workflow_dispatch: {}
 
 permissions:
@@ -21,13 +21,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests yfinance pandas holidays
+        run: pip install requests yfinance pandas
 
-      - name: Run data fetch script
+      - name: Run data fetch script (FRED + yfinance only, KOSIS/customs preserved)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          KOSIS_API_KEY: ${{ secrets.KOSIS_API_KEY }}
-          CUSTOMS_SERVICE_KEY: ${{ secrets.CUSTOMS_SERVICE_KEY }}
         run: python fetch_macro_data_github.py
 
       - name: Commit and push data.js if it changed
@@ -35,5 +33,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data.js
-          git diff --cached --quiet || git commit -m "Auto-update macro dashboard data"
+          git diff --cached --quiet || git commit -m "Auto-update macro dashboard data (FRED + yfinance)"
           git push
