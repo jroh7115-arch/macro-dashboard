@@ -1,29 +1,34 @@
 r"""
-한국 매크로 대시보드용 raw 데이터 수집 스크립트 - GitHub Actions 전용 버전.
+한국 매크로 대시보드용 raw 데이터 수집 스크립트 - GitHub Actions 전용 "하이브리드" 버전.
 
-이 파일은 로컬 PC용 fetch_macro_data.py와 내용이 거의 같지만, API 키를
-소스코드에 직접 적지 않고 환경변수(GitHub Secrets)에서만 읽어옵니다.
-그래서 이 파일은 공개 저장소(GitHub)에 올려도 안전합니다.
+이 버전은 FRED(OECD CLI, 미국 금리/M2/VIX/지수/하이일드)와 야후 파이낸스
+(KOSPI/KOSDAQ150/VKOSPI)만 수집합니다. KOSIS·관세청 API는 한국 국내 IP에서만
+접근이 되는 것으로 확인되어(GitHub Actions 서버=해외 IP라 접속이 타임아웃 남),
+이 버전에서는 시도하지 않습니다.
 
-*** 로컬 PC에서는 이 파일 대신 fetch_macro_data.py(키가 이미 들어있는 버전)를
-    사용하세요. 이 파일은 GitHub Actions 워크플로우가 실행하는 용도입니다. ***
+대신 기존 data.js에 이미 들어있는 수출총액/일평균수출액/품목별수출액
+(export_total_1000usd / export_daily_avg_1000usd / categories / product_months /
+product_1000usd)은 그대로 보존해서 덮어쓰지 않습니다. 그 부분은 로컬 PC에서
+fetch_macro_data.py를 실행했을 때만 갱신됩니다.
 
-필요한 환경변수 (GitHub 저장소 Settings > Secrets and variables > Actions 에서
-FRED_API_KEY / KOSIS_API_KEY / CUSTOMS_SERVICE_KEY 세 개를 등록해두면
-워크플로우가 자동으로 넘겨줍니다):
+즉 이 스크립트가 GitHub Actions에서 매달 자동으로 돌면서 CLI/금리/VIX/M2/
+WALCL/하이일드/KOSPI/나스닥/S&P500/MDD를 계속 최신으로 유지하고, 수출입 관련
+5개 차트만 로컬 PC를 켜서 한 번씩 돌려줘야 최신화됩니다.
+
+*** 로컬 PC에서는 이 파일 대신 fetch_macro_data.py(모든 지표를 다 가져오는
+    버전)를 계속 사용하세요. 이 파일은 GitHub Actions 전용입니다. ***
+
+필요한 환경변수 (GitHub 저장소 Settings > Secrets and variables > Actions):
     FRED_API_KEY
-    KOSIS_API_KEY
-    CUSTOMS_SERVICE_KEY
 
 사용법 (GitHub Actions 워크플로우 안에서):
-    pip install requests yfinance pandas holidays
+    pip install requests yfinance pandas
     python fetch_macro_data_github.py
-
-완료되면 이 폴더에 data.js가 생성/갱신됩니다.
 """
 
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta
@@ -44,8 +49,6 @@ def _required_env(name: str) -> str:
 
 
 FRED_API_KEY = _required_env("FRED_API_KEY")
-KOSIS_API_KEY = _required_env("KOSIS_API_KEY")
-CUSTOMS_SERVICE_KEY = _required_env("CUSTOMS_SERVICE_KEY")
 
 COUNTRIES = {
     "KOR": "한국", "USA": "미국", "CHN": "중국", "JPN": "일본", "DEU": "독일",
@@ -53,13 +56,9 @@ COUNTRIES = {
     "FRA": "프랑스", "ITA": "이탈리아", "ESP": "스페인", "IDN": "인도네시아",
 }
 
-CATEGORIES = {
-    "반도체": "8542",
-    "자동차": "8703",
-    "이차전지": "8507",
-    "선박": "8901",
-    "철강판재류": "7208",
-}
+# 로컬 스크립트와 카테고리 목록을 맞춰두기 위한 기본값(첫 실행 등, 기존
+# data.js에서 categories를 못 읽어왔을 때만 사용됨).
+DEFAULT_CATEGORIES = ["반도체", "자동차", "이차전지", "선박", "철강판재류"]
 
 # FRED에서 가져올 미국 매크로 시리즈
 FRED_MACRO_SERIES = {
@@ -74,8 +73,7 @@ FRED_MACRO_SERIES = {
     "BAMLH0A0HYM2": "미국 하이일드 스프레드(ICE BofA OAS)",
 }
 
-CLI_MONTHS_BACK = 121      # CLI: 10년 (나머지 데이터 기준)
-EXPORT_MONTHS_BACK = 61    # 수출입 데이터(KOSIS 총액, 관세청 품목별): 5년
+CLI_MONTHS_BACK = 121      # CLI: 10년
 DAILY_YEARS_BACK = 10      # 미국 금리/M2/VIX/지수/WALCL, KOSPI/KOSDAQ150: 10년
 
 
@@ -93,6 +91,26 @@ def month_range(months_back: int):
             m = 1
             y += 1
     return out
+
+
+# ------------------------------------------------------------------
+# 기존 data.js 읽기 (KOSIS/관세청 필드를 보존하기 위해)
+# ------------------------------------------------------------------
+def load_existing_data(path="data.js"):
+    if not os.path.exists(path):
+        print(f"참고: {path} 파일이 없습니다 (최초 실행). 수출입 관련 항목은 빈 값으로 채워집니다.")
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+        m = re.search(r"window\.MACRO_DATA\s*=\s*(\{.*\});?\s*$", text, re.DOTALL)
+        if not m:
+            print(f"경고: {path}에서 JSON 부분을 찾지 못했습니다. 수출입 항목은 빈 값으로 채워집니다.")
+            return {}
+        return json.loads(m.group(1))
+    except Exception as e:
+        print(f"경고: {path} 읽기/파싱 실패({e}). 수출입 항목은 빈 값으로 채워집니다.")
+        return {}
 
 
 # ------------------------------------------------------------------
@@ -127,94 +145,6 @@ def fetch_fred_series(series_id: str, months_back: int = None, start_date: str =
         except ValueError:
             out[o["date"]] = None
     return out
-
-
-# ------------------------------------------------------------------
-# 2. KOSIS: 수출 총액
-# ------------------------------------------------------------------
-def fetch_kosis_total(months_back: int):
-    url = "https://kosis.kr/openapi/Param/statisticsParameterData.do"
-    params = {
-        "method": "getList",
-        "apiKey": KOSIS_API_KEY,
-        "itmId": "13103112831T1",
-        "objL1": "13102112831A.A",
-        "format": "json",
-        "jsonVD": "Y",
-        "prdSe": "M",
-        "newEstPrdCnt": str(months_back),
-        "orgId": "360",
-        "tblId": "DT_1R11001_FRM101",
-    }
-    res = requests.get(url, params=params, timeout=20)
-    res.raise_for_status()
-    rows = res.json()
-    return {row["PRD_DE"]: int(row["DT"]) for row in rows}
-
-
-# ------------------------------------------------------------------
-# 2-1. 월별 조업일수 추정 및 1일평균 수출액 계산
-# ------------------------------------------------------------------
-def working_days_in_month(yyyymm: str) -> int:
-    import calendar
-    y, m = int(yyyymm[:4]), int(yyyymm[4:])
-    last_day = calendar.monthrange(y, m)[1]
-    try:
-        import holidays
-        kr_holidays = holidays.KR(years=y)
-    except ImportError:
-        kr_holidays = {}
-    cnt = 0
-    for d in range(1, last_day + 1):
-        dt = datetime(y, m, d).date()
-        if dt.weekday() >= 5:
-            continue
-        if dt in kr_holidays:
-            continue
-        cnt += 1
-    return cnt
-
-
-def compute_export_daily_avg(export_total: dict) -> dict:
-    out = {}
-    for ym, total in export_total.items():
-        if total is None:
-            out[ym] = None
-            continue
-        wd = working_days_in_month(ym)
-        out[ym] = round(total / wd, 1) if wd else None
-    return out
-
-
-# ------------------------------------------------------------------
-# 3. 관세청 GW API: 품목별 수출액
-# ------------------------------------------------------------------
-def fetch_customs_month_total(hs_prefix: str, yyyymm: str):
-    url = "http://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
-    params = {
-        "serviceKey": CUSTOMS_SERVICE_KEY,
-        "strtYymm": yyyymm,
-        "endYymm": yyyymm,
-        "hsSgn": hs_prefix,
-        "type": "json",
-    }
-    try:
-        res = requests.get(url, params=params, timeout=15)
-        res.raise_for_status()
-        try:
-            items = res.json()["response"]["body"]["items"]["item"]
-        except Exception:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(res.text)
-            items = [{c.tag: c.text for c in item} for item in root.findall(".//item")]
-        if isinstance(items, dict):
-            items = [items]
-        for it in items:
-            if it.get("hsCode") == "-":
-                return float(it.get("expDlr", 0))
-    except Exception as e:
-        print(f"    에러({hs_prefix},{yyyymm}): {e}")
-    return None
 
 
 # ------------------------------------------------------------------
@@ -261,51 +191,34 @@ def fetch_yfinance_series(ticker: str, years_back: int):
 
 
 def main():
+    existing = load_existing_data()
+
     months = month_range(CLI_MONTHS_BACK)
-    export_months = month_range(EXPORT_MONTHS_BACK)
     daily_start = (datetime.now() - timedelta(days=365 * DAILY_YEARS_BACK)).strftime("%Y-%m-%d")
     print(f"CLI 조회 기간: {months[0]} ~ {months[-1]} ({len(months)}개월, 10년)")
-    print(f"수출입 조회 기간: {export_months[0]} ~ {export_months[-1]} ({len(export_months)}개월, 5년)")
     print(f"일별 지표 조회 시작일: {daily_start} (10년)")
 
-    n_hs = len(CATEGORIES)
-    est_calls = n_hs * len(export_months)
-    print(f"관세청 API 예상 호출 횟수: 약 {est_calls}회 (일일 한도 1,000회 기준 확인 필요)")
-
-    print("\n[1/8] FRED에서 OECD CLI 수집 중 (10년)...")
+    print("\n[1/4] FRED에서 OECD CLI 수집 중 (10년)...")
     cli = {}
     for code in COUNTRIES:
         print(f"  - {code}")
         cli[code] = fetch_fred_cli(code, CLI_MONTHS_BACK)
         time.sleep(0.2)
 
-    print("\n[2/8] KOSIS에서 수출총액 수집 중 (5년)...")
-    export_total = fetch_kosis_total(EXPORT_MONTHS_BACK)
-    export_daily_avg = compute_export_daily_avg(export_total)
-
-    print("\n[3/8] 관세청 API에서 품목별 수출액 수집 중 (5년)...")
-    product_months = export_months
-    product = {cat: {} for cat in CATEGORIES}
-    for cat, hs in CATEGORIES.items():
-        print(f"  - {cat} (HS {hs})")
-        for ym in product_months:
-            product[cat][ym] = fetch_customs_month_total(hs, ym)
-            time.sleep(0.15)
-
-    print("\n[4/8] FRED에서 미국 금리·M2·VIX·지수 수집 중...")
+    print("\n[2/4] FRED에서 미국 금리·M2·VIX·지수·하이일드 수집 중...")
     fred_macro = {}
     for sid, label in FRED_MACRO_SERIES.items():
         print(f"  - {sid} ({label})")
         fred_macro[sid] = fetch_fred_series(sid, start_date=daily_start)
         time.sleep(0.2)
 
-    print("\n[7/8] S&P500 / 나스닥 MDD 계산 중...")
+    print("\n[3/4] S&P500 / 나스닥 MDD 계산 중...")
     mdd = {
         "SP500": compute_mdd_series(fred_macro["SP500"]),
         "NASDAQCOM": compute_mdd_series(fred_macro["NASDAQCOM"]),
     }
 
-    print("\n[8/8] yfinance에서 KOSPI / KOSDAQ150 / VKOSPI 수집 중...")
+    print("\n[4/4] yfinance에서 KOSPI / KOSDAQ150 / VKOSPI 수집 중...")
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
     mdd["KOSPI"] = compute_mdd_series(kospi)
@@ -315,16 +228,18 @@ def main():
     if not vkospi:
         print("  ^VKOSPI: 야후 파이낸스에서 데이터를 가져오지 못했습니다 (티커 미지원 가능성).")
 
+    # KOSIS/관세청 관련 필드는 기존 data.js 값을 그대로 보존한다 (이 스크립트는
+    # 그 부분을 수집하지 않음. 로컬 PC의 fetch_macro_data.py가 담당).
     data = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "months": months,
         "countries": COUNTRIES,
         "cli": cli,
-        "export_total_1000usd": export_total,
-        "export_daily_avg_1000usd": export_daily_avg,
-        "categories": list(CATEGORIES.keys()),
-        "product_months": product_months,
-        "product_1000usd": product,
+        "export_total_1000usd": existing.get("export_total_1000usd", {}),
+        "export_daily_avg_1000usd": existing.get("export_daily_avg_1000usd", {}),
+        "categories": existing.get("categories", DEFAULT_CATEGORIES),
+        "product_months": existing.get("product_months", []),
+        "product_1000usd": existing.get("product_1000usd", {}),
         "fred_macro": fred_macro,
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
@@ -337,7 +252,7 @@ def main():
         json.dump(data, f, ensure_ascii=False)
         f.write(";")
 
-    print("\n완료: data.js 생성됨.")
+    print("\n완료: data.js 생성됨 (수출입 관련 항목은 기존 값 보존).")
 
 
 if __name__ == "__main__":
