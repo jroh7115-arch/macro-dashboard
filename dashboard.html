@@ -168,6 +168,23 @@
   <div class="err" id="err-mddChartUS"></div>
 </div>
 
+<h3>4. 지수 종가 추이</h3>
+
+<div class="chart-block">
+  <h2>KOSPI 지수 종가 <span class="range" id="range-kospiPriceChart"></span></h2>
+  <p class="desc">KOSPI 지수의 실제 종가 흐름입니다. 위쪽 MDD 차트가 '고점 대비 몇 % 빠졌는가'를 보여준다면, 이 차트는 지수 자체의 절대적인 레벨과 장기 추세를 그대로 보여줍니다.</p>
+  <div class="chart-wrap"><canvas id="kospiPriceChart"></canvas></div>
+  <div class="missing" id="kospiPriceMissingNote"></div>
+  <div class="err" id="err-kospiPriceChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>S&P500 지수 종가 <span class="range" id="range-sp500PriceChart"></span></h2>
+  <p class="desc">S&P500 지수의 실제 종가 흐름입니다. 위 KOSPI 차트와 같은 기간을 비교하면, 두 시장의 장기 상승 추세와 조정 시점의 타이밍 차이를 눈으로 확인할 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="sp500PriceChart"></canvas></div>
+  <div class="err" id="err-sp500PriceChart"></div>
+</div>
+
 <div class="notes">
   <strong>데이터 출처 및 한계</strong><br>
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
@@ -176,7 +193,8 @@
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - VKOSPI(한국 변동성지수): yfinance(^VKOSPI 티커). 야후 파이낸스가 이 티커를 지원하지 않으면 데이터가 비어 있을 수 있습니다.<br>
   - 하이일드 스프레드(BAMLH0A0HYM2, ICE BofA US High Yield OAS): FRED. FRED 정책상 최근 약 3년치만 제공되어 다른 일별 지표(10년)보다 기간이 짧습니다.<br>
-  - 상단 신호등 기준값(참고용, 투자 신호 아님): CLI는 100 기준·전월차 방향, 금리차는 0%p 이상 양호·-0.3%p 미만 경계, VIX는 20 미만 양호·30 초과 경계, MDD는 -10% 이내 양호·-20% 초과 경계, M2 YoY는 플러스 양호·-2% 미만 경계, 하이일드 스프레드는 4%p 미만 양호·6%p 초과 경계로 계산합니다.<br>
+  - 상단 신호등 기준값(참고용, 투자 신호 아님): CLI는 100 기준·전월차 방향, 금리차는 0%p 이상 양호·-0.3%p 미만 경계, VIX는 20 미만 양호·30 초과 경계, M2 YoY는 플러스 양호·-2% 미만 경계, 하이일드 스프레드는 4%p 미만 양호·6%p 초과 경계로 계산합니다.<br>
+  - MDD 신호등만 "양호/주의/경계" 대신 "고점 근접/조정 진행중/큰 폭 조정"으로 다르게 표시합니다. 낙폭이 크다는 것 자체가 위험 신호는 아니고, 이미 상당폭 조정을 거쳐 오히려 저가 매수 구간일 수도 있기 때문에 중립적으로 국면만 알려주는 용도입니다. (기준: -10% 이내/​-10~-20%/​-20% 초과)<br>
   - KOSPI / KOSDAQ150: yfinance(야후 파이낸스). KOSDAQ150은 정확한 지수 티커가 아니라 추종 ETF(KODEX 코스닥150, 229200.KS)로 근사한 값입니다.<br>
   - MDD는 조회 기간 내 롤링 최고가 대비 현재가의 낙폭(%)입니다. 조회 시작 시점 이전 고점은 반영되지 않습니다.<br>
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
@@ -331,6 +349,11 @@ const mddNASDAQ = mddSorted('NASDAQCOM');
 const mddKOSPI = mddSorted('KOSPI');
 const mddKOSDAQ = mddSorted('KOSDAQ150');
 
+// ================= 5-1. 지수 종가(원본 레벨) =================
+const eq = D.equities || {};
+const kospiPrice = seriesToSorted(eq.KOSPI);
+const sp500Price = seriesToSorted(eq.SP500);
+
 // ================= 요약 카드 =================
 // 최신 달(예: 7월)이 아직 발표 전이라 null인 경우, 카드는 값이 있는 가장 최근 시점 기준으로 보여준다.
 function lastValidIdx(arr) {
@@ -398,6 +421,13 @@ function sigCli(level, mom) {
 function sigSpread(v) { if (v == null) return null; if (v >= 0) return 'green'; if (v >= -0.3) return 'yellow'; return 'red'; }
 function sigVix(v) { if (v == null) return null; if (v < 20) return 'green'; if (v <= 30) return 'yellow'; return 'red'; }
 function sigMdd(v) { if (v == null) return null; if (v >= -10) return 'green'; if (v >= -20) return 'yellow'; return 'red'; }
+// MDD는 낙폭이 크다고 반드시 "위험"은 아니고 이미 조정을 거쳐 저가 매수 구간일 수도 있어,
+// 다른 지표처럼 양호/주의/경계로 표현하지 않고 중립적인 국면 설명으로 표시한다.
+function mddNote(color) {
+  if (color === 'green') return '고점 근접';
+  if (color === 'yellow') return '조정 진행중';
+  return '큰 폭 조정(저가매수 구간일 수도)';
+}
 function sigM2Yoy(v) { if (v == null) return null; if (v > 0) return 'green'; if (v >= -2) return 'yellow'; return 'red'; }
 function sigHy(v) { if (v == null) return null; if (v < 4) return 'green'; if (v <= 6) return 'yellow'; return 'red'; }
 
@@ -414,21 +444,21 @@ const signalDefs = [
   { label: '한국 CLI 국면', color: sigCli(latestKor, latestKorMom), detail: `${fmt(latestKor,1)} (전월차 ${latestKorMom>=0?'+':''}${fmt(latestKorMom,2)})` },
   { label: '미 장단기 금리차(10Y-2Y)', color: sigSpread(latestSpread), detail: `${fmt(latestSpread,2)}%p` },
   { label: 'VIX', color: sigVix(latestVix), detail: fmt(latestVix,1) },
-  { label: 'S&P500 MDD', color: sigMdd(latestSP500MDD), detail: fmt(latestSP500MDD,1)+'%' },
-  { label: '나스닥 MDD', color: sigMdd(latestNasdaqMdd), detail: fmt(latestNasdaqMdd,1)+'%' },
-  { label: 'KOSPI MDD', color: sigMdd(latestKospiMdd), detail: fmt(latestKospiMdd,1)+'%' },
-  { label: 'KOSDAQ150 MDD', color: sigMdd(latestKosdaqMdd), detail: fmt(latestKosdaqMdd,1)+'%' },
+  { label: 'S&P500 MDD', color: sigMdd(latestSP500MDD), detail: fmt(latestSP500MDD,1)+'%', note: mddNote(sigMdd(latestSP500MDD)) },
+  { label: '나스닥 MDD', color: sigMdd(latestNasdaqMdd), detail: fmt(latestNasdaqMdd,1)+'%', note: mddNote(sigMdd(latestNasdaqMdd)) },
+  { label: 'KOSPI MDD', color: sigMdd(latestKospiMdd), detail: fmt(latestKospiMdd,1)+'%', note: mddNote(sigMdd(latestKospiMdd)) },
+  { label: 'KOSDAQ150 MDD', color: sigMdd(latestKosdaqMdd), detail: fmt(latestKosdaqMdd,1)+'%', note: mddNote(sigMdd(latestKosdaqMdd)) },
   { label: '미국 M2 YoY', color: sigM2Yoy(latestM2Yoy), detail: fmt(latestM2Yoy,1)+'%' },
   { label: '하이일드 스프레드', color: sigHy(latestHySpread), detail: fmt(latestHySpread,2)+'%p' },
 ].filter(s => s.color != null);
 
 const signalColorLabel = { green: '양호', yellow: '주의', red: '경계' };
 document.getElementById('signals').innerHTML = signalDefs.map(s => `
-  <div class="signal-item"><span class="signal-dot ${s.color}"></span>${s.label}: ${s.detail} (${signalColorLabel[s.color]})</div>
+  <div class="signal-item"><span class="signal-dot ${s.color}"></span>${s.label}: ${s.detail} (${s.note || signalColorLabel[s.color]})</div>
 `).join('');
 
 const worstSignal = signalDefs.some(s => s.color === 'red') ? 'red' : (signalDefs.some(s => s.color === 'yellow') ? 'yellow' : 'green');
-const overallLabel = { green: '전반적으로 안정적인 국면', yellow: '일부 지표에서 경계 신호', red: '여러 지표에서 위험 신호 감지' };
+const overallLabel = { green: '전반적으로 안정적인 국면', yellow: '일부 지표가 평소 범위를 벗어난 상태', red: '일부 지표가 크게 움직이고 있어 확인이 필요한 상태' };
 document.getElementById('signalOverall').innerHTML = `<span class="signal-dot ${worstSignal}"></span> 종합 신호: ${overallLabel[worstSignal]}`;
 
 document.getElementById('metaLine').textContent = `이 대시보드의 데이터는 ${D.generated_at || '-'} 시점에 로컬 PC에서 수집한 값입니다. (fetch_macro_data.py 실행 기준)`;
@@ -500,6 +530,8 @@ setRange('hySpreadChart', hySpread.dates[0], hySpread.dates[hySpread.dates.lengt
   const mddUsAll = Array.from(new Set([mddSP500, mddNASDAQ].flatMap(s => s.dates))).sort();
   setRange('mddChartUS', mddUsAll[0], mddUsAll[mddUsAll.length-1]);
 }
+setRange('kospiPriceChart', kospiPrice.dates[0], kospiPrice.dates[kospiPrice.dates.length-1]);
+setRange('sp500PriceChart', sp500Price.dates[0], sp500Price.dates[sp500Price.dates.length-1]);
 
 // ================= CLI 국가별 요약표 =================
 // 레벨(100 기준)과 전월차(방향)로 국면을 자동 분류. OECD 공식 해석이 아니라 이 대시보드의 자체 기준.
@@ -549,6 +581,11 @@ document.getElementById('cliTable').innerHTML = `
   </table>`;
 
 const palette = ['#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5','#70AD47','#264478','#9E480E'];
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 const COMMON_LINE_OPTS = { tension: 0.15, pointRadius: 0, spanGaps: true };
 
 safeChart('cliChart', () => {
@@ -704,9 +741,29 @@ function buildMddChart(canvasId, missingNoteId, datasetsRaw) {
       type: 'line',
       data: { labels: allDates, datasets: available.map(d => {
         const map = {}; d.s.dates.forEach((date,i) => map[date] = d.s.vals[i]);
-        return { label: d.key, data: allDates.map(date => map[date] !== undefined ? map[date] : null), borderColor: d.color, ...COMMON_LINE_OPTS };
+        return {
+          label: d.key,
+          data: allDates.map(date => map[date] !== undefined ? map[date] : null),
+          borderColor: d.color,
+          backgroundColor: hexToRgba(d.color, 0.15),
+          borderWidth: 2,
+          fill: true,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: d.color,
+          spanGaps: true,
+        };
       })},
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'MDD(%)' } } } }
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { title: { display: true, text: 'MDD(%)' }, suggestedMax: 0, grid: { color: '#eee' } },
+          x: { grid: { display: false } },
+        }
+      }
     });
   });
 }
@@ -720,6 +777,46 @@ buildMddChart('mddChartUS', 'mddMissingNoteUS', [
   { key: 'S&P500', s: mddSP500, color: palette[0] },
   { key: '나스닥', s: mddNASDAQ, color: palette[1] },
 ]);
+
+function buildPriceChart(canvasId, missingNoteId, label, series, color) {
+  safeChart(canvasId, () => {
+    if (series.dates.length === 0) {
+      const el = document.getElementById(missingNoteId);
+      if (el) el.textContent = `참고: ${label} 데이터가 없습니다. fetch_macro_data.py를 로컬에서 실행하면 채워집니다.`;
+      return;
+    }
+    new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels: series.dates, datasets: [
+        {
+          label,
+          data: series.vals,
+          borderColor: color,
+          backgroundColor: hexToRgba(color, 0.12),
+          borderWidth: 2,
+          fill: true,
+          tension: 0.15,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: color,
+          spanGaps: true,
+        },
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { title: { display: true, text: '종가' }, grid: { color: '#eee' } },
+          x: { grid: { display: false } },
+        }
+      }
+    });
+  });
+}
+
+buildPriceChart('kospiPriceChart', 'kospiPriceMissingNote', 'KOSPI 종가', kospiPrice, palette[5]);
+buildPriceChart('sp500PriceChart', null, 'S&P500 종가', sp500Price, palette[0]);
 </script>
 
 </body>
