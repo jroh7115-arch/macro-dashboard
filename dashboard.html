@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>한국 매크로 수출·경기선행·시장심리 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+  body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; margin: 0; padding: 24px; background: #f5f6f8; color: #222; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h3 { font-size: 15px; margin: 32px 0 10px 0; color: #444; border-left: 4px solid #4472C4; padding-left: 8px; }
+  .meta { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 8px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 150px; flex: 1; }
+  .card .label { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .card .value { font-size: 19px; font-weight: 700; }
+  .card .sub { font-size: 12px; margin-top: 4px; }
+  .up { color: #2e7d32; } .down { color: #c62828; }
+  .chart-block { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .chart-block h2 { font-size: 15px; margin: 0 0 6px 0; }
+  .chart-block .desc { font-size: 12.5px; color: #666; margin: 0 0 12px 0; line-height: 1.5; }
+  .range { font-size: 12px; font-weight: 400; color: #999; }
+  .chart-wrap { position: relative; height: 380px; }
+  .notes { font-size: 12px; color: #888; line-height: 1.6; background: #fff; padding: 14px 18px; border-radius: 8px; }
+  .refresh { font-size: 12px; color: #999; margin-top: 20px; }
+  .missing { font-size: 12px; color: #c62828; padding: 8px; }
+  .err { font-size: 12px; color: #c62828; padding: 8px; display:none; }
+</style>
+</head>
+<body>
+
+<h1>한국 매크로 수출·경기선행·시장심리 대시보드</h1>
+<div class="meta" id="metaLine">데이터 로딩 중...</div>
+
+<div class="cards" id="cards"></div>
+
+<h3>1. 수출 · 경기선행지수</h3>
+
+<div class="chart-block">
+  <h2>OECD CLI: 한국 vs 주요국평균(9개국) <span class="range" id="range-cliChart"></span></h2>
+  <p class="desc">OECD 경기선행지수(CLI)는 향후 6~9개월의 경기 방향을 미리 보여주는 지표입니다. 100을 기준으로 위면 경기 확장 국면, 아래면 위축 국면을 의미하고, 전월 대비 방향(우측 축)이 오르는지 꺾이는지가 국면 전환의 신호입니다.</p>
+  <div class="chart-wrap"><canvas id="cliChart"></canvas></div>
+  <div class="err" id="err-cliChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>글로벌 경기 확산지수 (9개국 기준) <span class="range" id="range-diffusionChart"></span></h2>
+  <p class="desc">9개국 중 CLI가 100을 넘는 나라의 비율(레벨 확산)과 전월보다 개선된 나라의 비율(모멘텀 확산)입니다. 두 지표 모두 50%를 밑돌기 시작하면 경기 확장의 폭이 좁아지고 있다는 뜻이고, 개별국 CLI가 좋아도 이 비율이 낮으면 글로벌 동반 회복은 아니라는 의미입니다.</p>
+  <div class="chart-wrap"><canvas id="diffusionChart"></canvas></div>
+  <div class="err" id="err-diffusionChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>한국 월별 수출총액(KOSIS) 및 전년동월대비 증감률 <span class="range" id="range-exportChart"></span></h2>
+  <p class="desc">막대는 월별 수출총액, 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
+  <div class="chart-wrap"><canvas id="exportChart"></canvas></div>
+  <div class="err" id="err-exportChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 품목별 수출 비중 추이 (관세청 HS코드 기준) <span class="range" id="range-shareChart"></span></h2>
+  <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.</p>
+  <div class="chart-wrap"><canvas id="shareChart"></canvas></div>
+  <div class="err" id="err-shareChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 품목별 수출 전년동월대비 증감률(YoY, %) <span class="range" id="range-shareYoyChart"></span></h2>
+  <p class="desc">품목별 수출액 자체의 전년동월대비 증감률입니다. 비중 차트가 '전체에서 얼마나 큰가'를 보여준다면, 이 차트는 '그 품목 자체가 얼마나 빠르게 크고 있는가(혹은 줄고 있는가)'를 보여줍니다. 둘을 같이 보면 비중 확대가 실제 성장 때문인지, 다른 품목이 줄어서 상대적으로 커 보이는 것인지 구분할 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="shareYoyChart"></canvas></div>
+  <div class="err" id="err-shareYoyChart"></div>
+</div>
+
+<h3>2. 미국 금리 · 유동성</h3>
+
+<div class="chart-block">
+  <h2>미국 국채 10년물·2년물 금리 및 장단기 금리차(10Y-2Y) <span class="range" id="range-ratesChart"></span></h2>
+  <p class="desc">10년물 금리는 장기 성장·물가 기대, 2년물은 향후 1~2년의 기준금리 경로 기대를 반영합니다. 막대로 표시된 금리차(10Y-2Y)가 마이너스(빨간 막대, 역전)면 시장이 향후 경기둔화·금리인하를 예상한다는 신호로 흔히 해석되고, 과거 미국 경기침체 전에 반복적으로 나타난 패턴입니다.</p>
+  <div class="chart-wrap"><canvas id="ratesChart"></canvas></div>
+  <div class="err" id="err-ratesChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>미국 M2 통화량 및 전년동월대비 증가율(YoY) <span class="range" id="range-m2Chart"></span></h2>
+  <p class="desc">M2는 시중에 풀린 통화량(현금+예금 등)입니다. YoY 증가율이 높아지면 유동성이 풀리는 국면(주식 등 위험자산에 우호적일 수 있음), 낮아지거나 마이너스면 유동성이 죄어지는 국면(긴축)입니다.</p>
+  <div class="chart-wrap"><canvas id="m2Chart"></canvas></div>
+  <div class="err" id="err-m2Chart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>Fed 대차대조표(총자산, WALCL) - M2와 함께 보는 유동성 지표 <span class="range" id="range-walclChart"></span></h2>
+  <p class="desc">연준이 보유한 자산 총액으로, 양적완화(QE) 때는 늘고 양적긴축(QT) 때는 줄어듭니다. M2가 '시중에 풀린 돈 전체'라면 WALCL은 '연준이 직접 공급한 유동성'이라, 두 지표가 같이 늘거나 줄면 유동성 방향에 대한 확신이 커지고, 서로 다르게 움직이면 다른 경로(은행 신용창출 등)로 유동성이 움직이고 있다는 뜻입니다.</p>
+  <div class="chart-wrap"><canvas id="walclChart"></canvas></div>
+  <div class="err" id="err-walclChart"></div>
+</div>
+
+<h3>3. 시장 심리 (VIX · MDD)</h3>
+
+<div class="chart-block">
+  <h2>VIX 변동성지수 <span class="range" id="range-vixChart"></span></h2>
+  <p class="desc">S&P500 옵션 가격에서 역산한 향후 30일 예상 변동성으로, '공포지수'로도 불립니다. 통상 20 이하는 안정, 20~30은 경계, 30 이상은 시장이 불안·패닉에 가까운 상태로 해석합니다.</p>
+  <div class="chart-wrap"><canvas id="vixChart"></canvas></div>
+  <div class="err" id="err-vixChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 지수 MDD(고점대비 낙폭, %): S&P500 / 나스닥 / KOSPI / KOSDAQ150 <span class="range" id="range-mddChart"></span></h2>
+  <p class="desc">조회 기간 중 각 지수가 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 0%에 가까울수록 사상 최고치 부근, 마이너스가 클수록 고점 대비 많이 조정받은 상태입니다. 여러 지수를 겹쳐보면 특정 시장(예: 성장주 중심의 나스닥·코스닥)이 다른 시장보다 더 크게 흔들리는지 비교할 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="mddChart"></canvas></div>
+  <div class="missing" id="mddMissingNote"></div>
+  <div class="err" id="err-mddChart"></div>
+</div>
+
+<div class="notes">
+  <strong>데이터 출처 및 한계</strong><br>
+  - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
+  - 수출총액: KOSIS(kosis.kr) 한국무역협회 품목별수출입 통계표의 총액(SITC 'A', 분류방식과 무관한 순수 합계)<br>
+  - 품목별 수출액: 관세청_품목별 수출입실적(GW) API(apis.data.go.kr), HS코드 기준<br>
+  - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
+  - KOSPI / KOSDAQ150: yfinance(야후 파이낸스). KOSDAQ150은 정확한 지수 티커가 아니라 추종 ETF(KODEX 코스닥150, 229200.KS)로 근사한 값입니다.<br>
+  - MDD는 조회 기간 내 롤링 최고가 대비 현재가의 낙폭(%)입니다. 조회 시작 시점 이전 고점은 반영되지 않습니다.<br>
+  - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
+  - '9개국 평균'은 공식 G20 CLI 통계가 아니라 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코 9개국 단순평균입니다.<br>
+  - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함하며, 선박·철강은 대표 HS코드 일부만 반영합니다(과소집계 가능).
+</div>
+
+<div class="refresh">
+  최신 데이터로 갱신하려면 <code>fetch_macro_data.py</code>를 본인 PC에서 다시 실행한 뒤 이 페이지를 새로고침하세요.
+  (KOSPI/KOSDAQ150은 <code>pip install yfinance</code> 후 실행해야 채워집니다.)
+</div>
+
+<script>
+const D = window.MACRO_DATA;
+
+function fmt(n, d=2) { return (n === null || n === undefined || isNaN(n)) ? '-' : n.toFixed(d); }
+function monthLabel(ym) { return ym.slice(0,4) + '-' + ym.slice(4,6); }
+function robustAxisRange(valueArrays, padRatio = 0.25) {
+  // Tukey fence 방식: 코로나처럼 짧고 극단적인 튐은 제외하고, 평상시 변동폭이 잘 보이도록 축 범위를 계산.
+  const all = [];
+  valueArrays.forEach(arr => arr.forEach(v => { if (v != null && !isNaN(v)) all.push(v); }));
+  if (!all.length) return {};
+  all.sort((a,b) => a-b);
+  const q = (p) => {
+    const idx = p * (all.length - 1);
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return all[lo] + (all[hi]-all[lo]) * (idx-lo);
+  };
+  const q1 = q(0.25), q3 = q(0.75);
+  const iqr = (q3 - q1) || (q(0.9)-q(0.1)) || 1;
+  let min = q1 - iqr * 1.5;
+  let max = q3 + iqr * 1.5;
+  const pad = (max - min) * padRatio;
+  return { min: min - pad, max: max + pad };
+}
+
+function safeChart(canvasId, builder) {
+  try {
+    builder();
+  } catch (e) {
+    console.error('Chart build failed:', canvasId, e);
+    const el = document.getElementById('err-' + canvasId);
+    if (el) { el.style.display = 'block'; el.textContent = '차트 렌더링 오류: ' + e.message; }
+  }
+}
+
+// ================= 1. CLI =================
+const months = D.months;
+const countryCodes = Object.keys(D.countries);
+const clivals = {};
+countryCodes.forEach(c => { clivals[c] = months.map(ym => D.cli[c] ? D.cli[c][ym] : null); });
+const avgArr = months.map((ym, i) => {
+  const vals = countryCodes.map(c => clivals[c][i]).filter(v => v != null);
+  return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+});
+const korArr = clivals['KOR'];
+const korMom = korArr.map((v,i) => i===0 || v==null || korArr[i-1]==null ? null : v - korArr[i-1]);
+const avgMom = avgArr.map((v,i) => i===0 || v==null || avgArr[i-1]==null ? null : v - avgArr[i-1]);
+
+// v == null 은 null과 undefined를 모두 걸러냄 (FRED에 아직 발표 안 된 월은 키 자체가 없어 undefined로 나옴)
+const above100 = months.map((ym,i) => {
+  const vals = countryCodes.map(c => clivals[c][i]).filter(v => v != null);
+  return vals.length ? vals.filter(v => v > 100).length / vals.length * 100 : null;
+});
+const rising = months.map((ym,i) => {
+  if (i === 0) return null;
+  let cnt = 0, total = 0;
+  countryCodes.forEach(c => {
+    const cur = clivals[c][i], prev = clivals[c][i-1];
+    if (cur != null && prev != null) { total++; if (cur > prev) cnt++; }
+  });
+  return total ? cnt/total*100 : null;
+});
+
+// ================= 2. 수출 =================
+const expMonths = Object.keys(D.export_total_1000usd).sort();
+const expVals = expMonths.map(ym => D.export_total_1000usd[ym] / 1000);
+const expYoy = expMonths.map((ym,i) => {
+  if (i < 12) return null;
+  const prev = expVals[i-12];
+  return prev ? (expVals[i]/prev - 1) * 100 : null;
+});
+
+// ================= 3. 품목 비중 & YoY =================
+const pMonths = D.product_months;
+const cats = D.categories;
+const shareData = {};
+const catVals = {};
+cats.forEach(cat => {
+  catVals[cat] = pMonths.map(ym => D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null);
+  shareData[cat] = pMonths.map(ym => {
+    const val = D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null;
+    const total = D.export_total_1000usd[ym];
+    return (val !== null && val !== undefined && total) ? val/total*100 : null;
+  });
+});
+const catYoy = {};
+cats.forEach(cat => {
+  catYoy[cat] = pMonths.map((ym,i) => {
+    if (i < 12) return null;
+    const prev = catVals[cat][i-12], cur = catVals[cat][i];
+    if (prev === null || prev === undefined || cur === null || cur === undefined) return null;
+    return (cur/prev - 1) * 100;
+  });
+});
+
+// ================= 4. 미국 금리/M2/WALCL/VIX =================
+const fm = D.fred_macro || {};
+function seriesToSorted(obj) {
+  const dates = Object.keys(obj || {}).sort();
+  return { dates, vals: dates.map(d => obj[d]) };
+}
+const dgs10 = seriesToSorted(fm.DGS10);
+const dgs2 = seriesToSorted(fm.DGS2);
+const spread = seriesToSorted(fm.T10Y2Y);
+const vix = seriesToSorted(fm.VIXCLS);
+const m2 = seriesToSorted(fm.M2SL);
+const walcl = seriesToSorted(fm.WALCL);
+const m2Yoy = m2.vals.map((v,i) => {
+  if (i < 12) return null;
+  const prev = m2.vals[i-12];
+  return (prev && v !== null) ? (v/prev - 1) * 100 : null;
+});
+
+// ================= 5. MDD =================
+const mdd = D.mdd || {};
+function mddSorted(key) { return seriesToSorted(mdd[key]); }
+const mddSP500 = mddSorted('SP500');
+const mddNASDAQ = mddSorted('NASDAQCOM');
+const mddKOSPI = mddSorted('KOSPI');
+const mddKOSDAQ = mddSorted('KOSDAQ150');
+
+// ================= 요약 카드 =================
+// 최신 달(예: 7월)이 아직 발표 전이라 null인 경우, 카드는 값이 있는 가장 최근 시점 기준으로 보여준다.
+function lastValidIdx(arr) {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i] != null && !isNaN(arr[i])) return i;
+  }
+  return arr.length - 1;
+}
+
+const latestIdx = lastValidIdx(korArr);
+const latestKor = korArr[latestIdx];
+const latestKorMom = korMom[latestIdx];
+const latestExpIdx = lastValidIdx(expVals);
+const latestExp = expVals[latestExpIdx];
+const latestExpYoy = expYoy[latestExpIdx];
+const semiArr = shareData['반도체'] || [];
+const latestShareIdx = lastValidIdx(semiArr);
+const semiShare = semiArr[latestShareIdx];
+const spreadIdx = lastValidIdx(spread.vals);
+const latestSpread = spread.vals[spreadIdx];
+const vixIdx = lastValidIdx(vix.vals);
+const latestVix = vix.vals[vixIdx];
+const m2Idx = lastValidIdx(m2.vals);
+const latestM2 = m2.vals[m2Idx];
+const m2YoyIdx = lastValidIdx(m2Yoy);
+const latestM2Yoy = m2Yoy[m2YoyIdx];
+const sp500MddIdx = lastValidIdx(mddSP500.vals);
+const latestSP500MDD = mddSP500.vals[sp500MddIdx];
+
+const cards = [
+  {label: `한국 CLI (${monthLabel(months[latestIdx])})`, value: fmt(latestKor,2), sub: (latestKorMom>=0?'▲ +':'▼ ') + fmt(Math.abs(latestKorMom),3), cls: latestKorMom>=0?'up':'down'},
+  {label: `수출총액 (${monthLabel(expMonths[latestExpIdx])})`, value: fmt(latestExp,0)+'백만$', sub: (latestExpYoy>=0?'▲ YoY +':'▼ YoY ')+fmt(Math.abs(latestExpYoy),1)+'%', cls: latestExpYoy>=0?'up':'down'},
+  {label: `반도체 비중 (${monthLabel(pMonths[latestShareIdx])})`, value: fmt(semiShare,1)+'%', sub: '', cls: ''},
+  {label: '미국 10Y-2Y 금리차', value: fmt(latestSpread,2)+'%p', sub: latestSpread<0?'역전 상태':'정상 형태', cls: latestSpread<0?'down':'up'},
+  {label: 'VIX', value: fmt(latestVix,1), sub: latestVix>25?'경계 구간':(latestVix<15?'안정 구간':'보통'), cls: latestVix>25?'down':'up'},
+  {label: 'S&P500 MDD', value: fmt(latestSP500MDD,1)+'%', sub: '조회기간 내 롤링 낙폭', cls: latestSP500MDD < -5 ? 'down':'up'},
+  {label: '미국 M2 YoY', value: fmt(latestM2Yoy,1)+'%', sub: fmt(latestM2,0)+'십억$', cls: latestM2Yoy>=0?'up':'down'},
+];
+document.getElementById('cards').innerHTML = cards.map(c => `
+  <div class="card">
+    <div class="label">${c.label}</div>
+    <div class="value">${c.value}</div>
+    <div class="sub ${c.cls}">${c.sub}</div>
+  </div>`).join('');
+
+document.getElementById('metaLine').textContent = `데이터 기준: ${D.generated_at || '-'}`;
+
+function setRange(id, first, last) {
+  const el = document.getElementById('range-' + id);
+  if (!el) return;
+  el.textContent = (first && last) ? `(${first} ~ ${last})` : '(데이터 없음)';
+}
+setRange('cliChart', monthLabel(months[0]), monthLabel(months[months.length-1]));
+setRange('diffusionChart', monthLabel(months[0]), monthLabel(months[months.length-1]));
+setRange('exportChart', monthLabel(expMonths[0]), monthLabel(expMonths[expMonths.length-1]));
+setRange('shareChart', monthLabel(pMonths[0]), monthLabel(pMonths[pMonths.length-1]));
+{
+  const firstYoyIdx = pMonths.length >= 13 ? 12 : pMonths.length - 1;
+  setRange('shareYoyChart', pMonths.length ? monthLabel(pMonths[firstYoyIdx]) : null, pMonths.length ? monthLabel(pMonths[pMonths.length-1]) : null);
+}
+setRange('ratesChart', dgs10.dates[0], dgs10.dates[dgs10.dates.length-1]);
+setRange('m2Chart', m2.dates[0], m2.dates[m2.dates.length-1]);
+setRange('walclChart', walcl.dates[0], walcl.dates[walcl.dates.length-1]);
+setRange('vixChart', vix.dates[0], vix.dates[vix.dates.length-1]);
+{
+  const mddAll = Array.from(new Set([mddSP500, mddNASDAQ, mddKOSPI, mddKOSDAQ].flatMap(s => s.dates))).sort();
+  setRange('mddChart', mddAll[0], mddAll[mddAll.length-1]);
+}
+
+const palette = ['#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5','#70AD47','#264478','#9E480E'];
+const COMMON_LINE_OPTS = { tension: 0.15, pointRadius: 0, spanGaps: true };
+
+safeChart('cliChart', () => {
+  const levelRange = robustAxisRange([korArr, avgArr], 0.2);
+  const momRange = robustAxisRange([korMom, avgMom], 0.2);
+  new Chart(document.getElementById('cliChart'), {
+    type: 'line',
+    data: { labels: months.map(monthLabel), datasets: [
+      { label: '한국 CLI', data: korArr, borderColor: palette[0], yAxisID: 'y', ...COMMON_LINE_OPTS },
+      { label: '9개국평균 CLI', data: avgArr, borderColor: palette[1], yAxisID: 'y', ...COMMON_LINE_OPTS },
+      { label: '한국 전월차', data: korMom, borderColor: palette[0], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
+      { label: '평균 전월차', data: avgMom, borderColor: palette[1], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { position: 'left', title: { display: true, text: 'CLI 레벨 (코로나 등 극단치는 축 밖으로 잘림)' }, min: levelRange.min, max: levelRange.max },
+      y1: { position: 'right', title: { display: true, text: '전월차' }, grid: { drawOnChartArea: false }, min: momRange.min, max: momRange.max },
+    }}
+  });
+});
+
+safeChart('diffusionChart', () => new Chart(document.getElementById('diffusionChart'), {
+  type: 'line',
+  data: { labels: months.map(monthLabel), datasets: [
+    { label: 'CLI>100 국가비율(%)', data: above100, borderColor: palette[0], ...COMMON_LINE_OPTS },
+    { label: '전월대비 상승 국가비율(%)', data: rising, borderColor: palette[1], ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
+}));
+
+safeChart('exportChart', () => new Chart(document.getElementById('exportChart'), {
+  data: { labels: expMonths.map(monthLabel), datasets: [
+    { type: 'bar', label: '수출액(백만달러)', data: expVals, backgroundColor: '#4472C4', yAxisID: 'y', order: 2 },
+    { type: 'line', label: 'YoY(%)', data: expYoy, borderColor: '#E53935', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, scales: {
+    y: { position: 'left', title: { display: true, text: '수출액(백만$)' } },
+    y1: { position: 'right', title: { display: true, text: 'YoY(%)' }, grid: { drawOnChartArea: false } },
+  }}
+}));
+
+safeChart('shareChart', () => new Chart(document.getElementById('shareChart'), {
+  type: 'line',
+  data: { labels: pMonths.map(monthLabel), datasets: cats.map((cat, i) => ({
+    label: cat, data: shareData[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
+  }))},
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '비중(%)' } } } }
+}));
+
+safeChart('shareYoyChart', () => new Chart(document.getElementById('shareYoyChart'), {
+  type: 'line',
+  data: { labels: pMonths.map(monthLabel), datasets: cats.map((cat, i) => ({
+    label: cat, data: catYoy[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
+  }))},
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'YoY(%)' } } } }
+}));
+
+safeChart('ratesChart', () => new Chart(document.getElementById('ratesChart'), {
+  data: { labels: dgs10.dates, datasets: [
+    { type: 'bar', label: '금리차(10Y-2Y, %p)', data: spread.vals, backgroundColor: spread.vals.map(v => v < 0 ? 'rgba(198,40,40,0.55)' : 'rgba(112,173,71,0.55)'), yAxisID: 'y1', order: 3, barPercentage: 1.0, categoryPercentage: 1.0 },
+    { type: 'line', label: '10년물(%)', data: dgs10.vals, borderColor: palette[0], yAxisID: 'y', order: 1, borderWidth: 2.5, ...COMMON_LINE_OPTS },
+    { type: 'line', label: '2년물(%)', data: dgs2.vals, borderColor: palette[1], yAxisID: 'y', order: 2, borderWidth: 2.5, ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, interaction: { mode:'index', intersect:false }, scales: {
+    y: { position: 'left', title: { display: true, text: '금리(%)' } },
+    y1: { position: 'right', title: { display: true, text: '금리차(%p)' }, grid: { drawOnChartArea: false } },
+  }}
+}));
+
+safeChart('m2Chart', () => new Chart(document.getElementById('m2Chart'), {
+  data: { labels: m2.dates, datasets: [
+    { type: 'line', label: 'M2(십억달러)', data: m2.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
+    { type: 'line', label: 'M2 YoY(%)', data: m2Yoy, borderColor: '#ED7D31', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, scales: {
+    y: { position: 'left', title: { display: true, text: 'M2(십억$)' } },
+    y1: { position: 'right', title: { display: true, text: 'YoY(%)' }, grid: { drawOnChartArea: false } },
+  }}
+}));
+
+safeChart('walclChart', () => new Chart(document.getElementById('walclChart'), {
+  type: 'line',
+  data: { labels: walcl.dates, datasets: [
+    { label: 'Fed 총자산(백만달러)', data: walcl.vals, borderColor: '#264478', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false }
+}));
+
+safeChart('vixChart', () => new Chart(document.getElementById('vixChart'), {
+  type: 'line',
+  data: { labels: vix.dates, datasets: [
+    { label: 'VIX', data: vix.vals, borderColor: '#C62828', fill: true, backgroundColor: 'rgba(198,40,40,0.08)', ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Index' } } } }
+}));
+
+safeChart('mddChart', () => {
+  const mddDatasetsRaw = [
+    { key: 'S&P500', s: mddSP500, color: palette[0] },
+    { key: '나스닥', s: mddNASDAQ, color: palette[1] },
+    { key: 'KOSPI', s: mddKOSPI, color: palette[5] },
+    { key: 'KOSDAQ150(ETF근사)', s: mddKOSDAQ, color: palette[3] },
+  ];
+  const availableMdd = mddDatasetsRaw.filter(d => d.s.dates.length > 0);
+  const unavailableMdd = mddDatasetsRaw.filter(d => d.s.dates.length === 0).map(d => d.key);
+  if (unavailableMdd.length) {
+    document.getElementById('mddMissingNote').textContent = `참고: ${unavailableMdd.join(', ')}는 이 샘플 데이터에 없습니다. fetch_macro_data.py를 로컬에서 실행하면 채워집니다.`;
+  }
+  const allDates = Array.from(new Set(availableMdd.flatMap(d => d.s.dates))).sort();
+  new Chart(document.getElementById('mddChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: availableMdd.map(d => {
+      const map = {}; d.s.dates.forEach((date,i) => map[date] = d.s.vals[i]);
+      return { label: d.key, data: allDates.map(date => map[date] !== undefined ? map[date] : null), borderColor: d.color, ...COMMON_LINE_OPTS };
+    })},
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'MDD(%)' } } } }
+  });
+});
+</script>
+
+</body>
+</html>
