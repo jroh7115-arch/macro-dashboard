@@ -9,7 +9,7 @@
   body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; margin: 0; padding: 24px; background: #f5f6f8; color: #222; }
   h1 { font-size: 22px; margin-bottom: 4px; }
   h3 { font-size: 15px; margin: 32px 0 10px 0; color: #444; border-left: 4px solid #4472C4; padding-left: 8px; }
-  .meta { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .meta { color: #555; font-size: 13px; margin-bottom: 20px; background: #eef2fa; border-left: 3px solid #4472C4; padding: 8px 12px; border-radius: 4px; display: inline-block; }
   .cards { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
   .card { background: #fff; border-radius: 8px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 150px; flex: 1; }
   .card .label { font-size: 12px; color: #888; margin-bottom: 6px; }
@@ -25,6 +25,12 @@
   .refresh { font-size: 12px; color: #999; margin-top: 20px; }
   .missing { font-size: 12px; color: #c62828; padding: 8px; }
   .err { font-size: 12px; color: #c62828; padding: 8px; display:none; }
+  .clitable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .clitable th, .clitable td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #eee; }
+  .clitable th:first-child, .clitable td:first-child { text-align: left; }
+  .clitable th:last-child, .clitable td:last-child { text-align: left; }
+  .clitable thead th { color: #666; font-weight: 600; border-bottom: 2px solid #ccc; }
+  .clitable tbody tr:hover { background: #f7f9fc; }
 </style>
 </head>
 <body>
@@ -37,24 +43,44 @@
 <h3>1. 수출 · 경기선행지수</h3>
 
 <div class="chart-block">
-  <h2>OECD CLI: 한국 vs 주요국평균(9개국) <span class="range" id="range-cliChart"></span></h2>
+  <h2>OECD CLI: 한국 vs 주요국평균(13개국) <span class="range" id="range-cliChart"></span></h2>
   <p class="desc">OECD 경기선행지수(CLI)는 향후 6~9개월의 경기 방향을 미리 보여주는 지표입니다. 100을 기준으로 위면 경기 확장 국면, 아래면 위축 국면을 의미하고, 전월 대비 방향(우측 축)이 오르는지 꺾이는지가 국면 전환의 신호입니다.</p>
   <div class="chart-wrap"><canvas id="cliChart"></canvas></div>
   <div class="err" id="err-cliChart"></div>
 </div>
 
 <div class="chart-block">
-  <h2>글로벌 경기 확산지수 (9개국 기준) <span class="range" id="range-diffusionChart"></span></h2>
-  <p class="desc">9개국 중 CLI가 100을 넘는 나라의 비율(레벨 확산)과 전월보다 개선된 나라의 비율(모멘텀 확산)입니다. 두 지표 모두 50%를 밑돌기 시작하면 경기 확장의 폭이 좁아지고 있다는 뜻이고, 개별국 CLI가 좋아도 이 비율이 낮으면 글로벌 동반 회복은 아니라는 의미입니다.</p>
+  <h2>국가별 OECD CLI 레벨 요약표 (최신 2개월) <span class="range" id="range-cliTable"></span></h2>
+  <p class="desc">13개국 각각의 전월·이번월 CLI 레벨과 전월차, 그리고 국면 해석을 정리한 표입니다. 국가별로 최신 발표월이 다를 수 있어 "이번월" 기준 시점이 나라마다 다를 수 있습니다. 해석은 이 대시보드가 레벨(100 기준)과 전월차(방향) 두 값으로 자동 분류한 것으로, OECD 공식 해석이 아닙니다.</p>
+  <div id="cliTable"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요국 CLI 전월차 비교 (13개국 평균 · 한국 · 미국 · 중국) <span class="range" id="range-cliCountryMomChart"></span></h2>
+  <p class="desc">국가별 CLI가 전월 대비 얼마나 움직였는지를 비교하는 차트입니다. 여러 나라가 동시에 0선 위로 올라오면 글로벌 경기 모멘텀이 함께 개선되는 국면이고, 반대로 흩어져 움직이면 국가별 경기 사이클이 어긋나 있다는 뜻입니다. 2020년 코로나 시기의 급등락은 평상시 변동폭을 가리지 않도록 축 범위를 잘라냈습니다(값 자체는 원본 그대로이며, 그래프 밖으로 벗어나는 지점만 시각적으로 잘립니다).</p>
+  <div class="chart-wrap"><canvas id="cliCountryMomChart"></canvas></div>
+  <div class="err" id="err-cliCountryMomChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>글로벌 경기 확산지수 (13개국 기준) <span class="range" id="range-diffusionChart"></span></h2>
+  <p class="desc">13개국 중 CLI가 100을 넘는 나라의 비율(레벨 확산)과 전월보다 개선된 나라의 비율(모멘텀 확산)입니다. 두 지표 모두 50%를 밑돌기 시작하면 경기 확장의 폭이 좁아지고 있다는 뜻이고, 개별국 CLI가 좋아도 이 비율이 낮으면 글로벌 동반 회복은 아니라는 의미입니다.</p>
   <div class="chart-wrap"><canvas id="diffusionChart"></canvas></div>
   <div class="err" id="err-diffusionChart"></div>
 </div>
 
 <div class="chart-block">
   <h2>한국 월별 수출총액(KOSIS) 및 전년동월대비 증감률 <span class="range" id="range-exportChart"></span></h2>
-  <p class="desc">막대는 월별 수출총액, 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
+  <p class="desc">막대는 월별 수출총액(억달러), 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
   <div class="chart-wrap"><canvas id="exportChart"></canvas></div>
   <div class="err" id="err-exportChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>한국 월별 1일평균 수출액(추정) <span class="range" id="range-exportDailyChart"></span></h2>
+  <p class="desc">월 수출총액을 추정 조업일수(토·일요일과 법정공휴일 제외)로 나눈 값입니다. 조업일수가 월마다 다르기 때문에, 총액만 보면 조업일수가 많았던 달이 실제 수출 활력보다 좋아 보일 수 있는데 이 지표는 그 효과를 제거해줍니다. 꺾은선은 1일평균 수출액의 전년동월대비 증감률(YoY)로, 조업일수 효과를 뺀 순수한 수출 활력의 연간 변화를 보여줍니다. 다만 대체공휴일·임시공휴일 반영이 완벽하지 않아 관세청 공식 조업일수와 하루 이틀 차이가 날 수 있는 근사치입니다.</p>
+  <div class="chart-wrap"><canvas id="exportDailyChart"></canvas></div>
+  <div class="err" id="err-exportDailyChart"></div>
 </div>
 
 <div class="chart-block">
@@ -104,11 +130,19 @@
 </div>
 
 <div class="chart-block">
-  <h2>주요 지수 MDD(고점대비 낙폭, %): S&P500 / 나스닥 / KOSPI / KOSDAQ150 <span class="range" id="range-mddChart"></span></h2>
-  <p class="desc">조회 기간 중 각 지수가 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 0%에 가까울수록 사상 최고치 부근, 마이너스가 클수록 고점 대비 많이 조정받은 상태입니다. 여러 지수를 겹쳐보면 특정 시장(예: 성장주 중심의 나스닥·코스닥)이 다른 시장보다 더 크게 흔들리는지 비교할 수 있습니다.</p>
-  <div class="chart-wrap"><canvas id="mddChart"></canvas></div>
-  <div class="missing" id="mddMissingNote"></div>
-  <div class="err" id="err-mddChart"></div>
+  <h2>한국 지수 MDD(고점대비 낙폭, %): KOSPI / KOSDAQ150 <span class="range" id="range-mddChartKR"></span></h2>
+  <p class="desc">조회 기간 중 KOSPI·KOSDAQ150이 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 0%에 가까울수록 사상 최고치 부근, 마이너스가 클수록 고점 대비 많이 조정받은 상태입니다.</p>
+  <div class="chart-wrap"><canvas id="mddChartKR"></canvas></div>
+  <div class="missing" id="mddMissingNoteKR"></div>
+  <div class="err" id="err-mddChartKR"></div>
+</div>
+
+<div class="chart-block">
+  <h2>미국 지수 MDD(고점대비 낙폭, %): S&P500 / 나스닥 <span class="range" id="range-mddChartUS"></span></h2>
+  <p class="desc">조회 기간 중 S&P500·나스닥이 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 위 한국 지수 차트와 같은 시기를 비교하면, 국내 시장과 미국 시장 중 어느 쪽이 더 크게 흔들렸는지 가늠할 수 있습니다. (한국·미국을 같은 차트에 겹치면 변동성 크기 차이 때문에 비교가 어려워 차트를 분리했습니다.)</p>
+  <div class="chart-wrap"><canvas id="mddChartUS"></canvas></div>
+  <div class="missing" id="mddMissingNoteUS"></div>
+  <div class="err" id="err-mddChartUS"></div>
 </div>
 
 <div class="notes">
@@ -120,7 +154,8 @@
   - KOSPI / KOSDAQ150: yfinance(야후 파이낸스). KOSDAQ150은 정확한 지수 티커가 아니라 추종 ETF(KODEX 코스닥150, 229200.KS)로 근사한 값입니다.<br>
   - MDD는 조회 기간 내 롤링 최고가 대비 현재가의 낙폭(%)입니다. 조회 시작 시점 이전 고점은 반영되지 않습니다.<br>
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
-  - '9개국 평균'은 공식 G20 CLI 통계가 아니라 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코 9개국 단순평균입니다.<br>
+  - '13개국 평균'은 OECD가 공식 발표하는 G20 CLI 지수가 아니라, 이 대시보드가 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코·프랑스·이탈리아·스페인·인도네시아 13개국 CLI를 단순평균한 자체 계산값입니다. FRED가 제공하던 공식 OECD/G20 종합 CLI 시리즈는 2022년 11월 이후 갱신이 중단되어 이 대시보드에서는 쓸 수 없습니다.<br>
+  - 조업일수(1일평균 수출액 계산용)는 holidays 패키지의 한국 공휴일 데이터로 추정한 값이라, 대체공휴일·임시공휴일 반영이 완벽하지 않을 수 있습니다.<br>
   - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함하며, 선박·철강은 대표 HS코드 일부만 반영합니다(과소집계 가능).
 </div>
 
@@ -173,8 +208,11 @@ const avgArr = months.map((ym, i) => {
   return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
 });
 const korArr = clivals['KOR'];
-const korMom = korArr.map((v,i) => i===0 || v==null || korArr[i-1]==null ? null : v - korArr[i-1]);
-const avgMom = avgArr.map((v,i) => i===0 || v==null || avgArr[i-1]==null ? null : v - avgArr[i-1]);
+function momOf(arr) { return arr.map((v,i) => i===0 || v==null || arr[i-1]==null ? null : v - arr[i-1]); }
+const korMom = momOf(korArr);
+const avgMom = momOf(avgArr);
+const usaMom = momOf(clivals['USA'] || []);
+const chnMom = momOf(clivals['CHN'] || []);
 
 // v == null 은 null과 undefined를 모두 걸러냄 (FRED에 아직 발표 안 된 월은 키 자체가 없어 undefined로 나옴)
 const above100 = months.map((ym,i) => {
@@ -193,11 +231,23 @@ const rising = months.map((ym,i) => {
 
 // ================= 2. 수출 =================
 const expMonths = Object.keys(D.export_total_1000usd).sort();
-const expVals = expMonths.map(ym => D.export_total_1000usd[ym] / 1000);
+// 원본은 천달러(1000usd) 단위. 억달러(1e8 USD) 단위로 변환 (천달러 값 / 100000).
+const expVals = expMonths.map(ym => D.export_total_1000usd[ym] / 100000);
 const expYoy = expMonths.map((ym,i) => {
   if (i < 12) return null;
   const prev = expVals[i-12];
   return prev ? (expVals[i]/prev - 1) * 100 : null;
+});
+// 1일평균 수출액(추정 조업일수 기준). fetch_macro_data.py에서 이미 계산된 천달러 값을 억달러로 변환.
+const expDailyAvgRaw = D.export_daily_avg_1000usd || {};
+const expDailyVals = expMonths.map(ym => {
+  const v = expDailyAvgRaw[ym];
+  return (v == null || isNaN(v)) ? null : v / 100000;
+});
+const expDailyYoy = expDailyVals.map((v,i) => {
+  if (i < 12) return null;
+  const prev = expDailyVals[i-12];
+  return (prev != null && v != null) ? (v/prev - 1) * 100 : null;
 });
 
 // ================= 3. 품목 비중 & YoY =================
@@ -205,12 +255,16 @@ const pMonths = D.product_months;
 const cats = D.categories;
 const shareData = {};
 const catVals = {};
+// 주의: fetch_macro_data.py의 product_1000usd 필드는 이름과 달리 관세청 API가 주는
+// 실제 달러(USD) 원시값 그대로 들어 있다. export_total_1000usd(KOSIS)는 천달러 단위라
+// 여기서 1000으로 나눠 단위를 맞춘 뒤 사용한다 (안 그러면 비중이 1000배로 부풀어 보임).
+function rawUsdToThousand(v) { return (v == null || isNaN(v)) ? null : v / 1000; }
 cats.forEach(cat => {
-  catVals[cat] = pMonths.map(ym => D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null);
+  catVals[cat] = pMonths.map(ym => rawUsdToThousand(D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null));
   shareData[cat] = pMonths.map(ym => {
-    const val = D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null;
+    const val = rawUsdToThousand(D.product_1000usd[cat] ? D.product_1000usd[cat][ym] : null);
     const total = D.export_total_1000usd[ym];
-    return (val !== null && val !== undefined && total) ? val/total*100 : null;
+    return (val != null && total) ? val/total*100 : null;
   });
 });
 const catYoy = {};
@@ -257,6 +311,13 @@ function lastValidIdx(arr) {
   }
   return arr.length - 1;
 }
+// 여러 배열 중 하나라도 값이 있는 마지막 인덱스 (차트용 - 아직 발표 안 된 최신월을 잘라내기 위함)
+function lastValidIdxMulti(len, arrays) {
+  for (let i = len - 1; i >= 0; i--) {
+    if (arrays.some(arr => arr[i] != null && !isNaN(arr[i]))) return i;
+  }
+  return len - 1;
+}
 
 const latestIdx = lastValidIdx(korArr);
 const latestKor = korArr[latestIdx];
@@ -280,7 +341,7 @@ const latestSP500MDD = mddSP500.vals[sp500MddIdx];
 
 const cards = [
   {label: `한국 CLI (${monthLabel(months[latestIdx])})`, value: fmt(latestKor,2), sub: (latestKorMom>=0?'▲ +':'▼ ') + fmt(Math.abs(latestKorMom),3), cls: latestKorMom>=0?'up':'down'},
-  {label: `수출총액 (${monthLabel(expMonths[latestExpIdx])})`, value: fmt(latestExp,0)+'백만$', sub: (latestExpYoy>=0?'▲ YoY +':'▼ YoY ')+fmt(Math.abs(latestExpYoy),1)+'%', cls: latestExpYoy>=0?'up':'down'},
+  {label: `수출총액 (${monthLabel(expMonths[latestExpIdx])})`, value: fmt(latestExp,1)+'억$', sub: (latestExpYoy>=0?'▲ YoY +':'▼ YoY ')+fmt(Math.abs(latestExpYoy),1)+'%', cls: latestExpYoy>=0?'up':'down'},
   {label: `반도체 비중 (${monthLabel(pMonths[latestShareIdx])})`, value: fmt(semiShare,1)+'%', sub: '', cls: ''},
   {label: '미국 10Y-2Y 금리차', value: fmt(latestSpread,2)+'%p', sub: latestSpread<0?'역전 상태':'정상 형태', cls: latestSpread<0?'down':'up'},
   {label: 'VIX', value: fmt(latestVix,1), sub: latestVix>25?'경계 구간':(latestVix<15?'안정 구간':'보통'), cls: latestVix>25?'down':'up'},
@@ -294,43 +355,132 @@ document.getElementById('cards').innerHTML = cards.map(c => `
     <div class="sub ${c.cls}">${c.sub}</div>
   </div>`).join('');
 
-document.getElementById('metaLine').textContent = `데이터 기준: ${D.generated_at || '-'}`;
+document.getElementById('metaLine').textContent = `이 대시보드의 데이터는 ${D.generated_at || '-'} 시점에 로컬 PC에서 수집한 값입니다. (fetch_macro_data.py 실행 기준)`;
 
 function setRange(id, first, last) {
   const el = document.getElementById('range-' + id);
   if (!el) return;
   el.textContent = (first && last) ? `(${first} ~ ${last})` : '(데이터 없음)';
 }
-setRange('cliChart', monthLabel(months[0]), monthLabel(months[months.length-1]));
-setRange('diffusionChart', monthLabel(months[0]), monthLabel(months[months.length-1]));
-setRange('exportChart', monthLabel(expMonths[0]), monthLabel(expMonths[expMonths.length-1]));
-setRange('shareChart', monthLabel(pMonths[0]), monthLabel(pMonths[pMonths.length-1]));
+
+// ================= 차트용 트리밍 =================
+// months/expMonths/pMonths 배열은 아직 발표 전인 최신월(예: 이번 달)까지 자리를 잡아두기 때문에
+// 실제 값이 있는 마지막 시점 이후는 잘라내서, 차트와 기간 표시가 "실제 데이터가 있는 기간"만
+// 보여주도록 한다. (카드에 쓰인 latestIdx 등은 이 트리밍과 무관하게 그대로 동작)
+const cliLastIdx = lastValidIdxMulti(months.length, [korArr, avgArr]);
+const monthsCli = months.slice(0, cliLastIdx + 1);
+const korArrT = korArr.slice(0, cliLastIdx + 1);
+const avgArrT = avgArr.slice(0, cliLastIdx + 1);
+const korMomT = korMom.slice(0, cliLastIdx + 1);
+const avgMomT = avgMom.slice(0, cliLastIdx + 1);
+const usaMomT = usaMom.slice(0, cliLastIdx + 1);
+const chnMomT = chnMom.slice(0, cliLastIdx + 1);
+
+const diffLastIdx = lastValidIdxMulti(months.length, [above100, rising]);
+const monthsDiff = months.slice(0, diffLastIdx + 1);
+const above100T = above100.slice(0, diffLastIdx + 1);
+const risingT = rising.slice(0, diffLastIdx + 1);
+
+const expLastIdx = lastValidIdxMulti(expMonths.length, [expVals]);
+const expMonthsT = expMonths.slice(0, expLastIdx + 1);
+const expValsT = expVals.slice(0, expLastIdx + 1);
+const expYoyT = expYoy.slice(0, expLastIdx + 1);
+
+const expDailyLastIdx = lastValidIdxMulti(expMonths.length, [expDailyVals]);
+const expMonthsDailyT = expMonths.slice(0, expDailyLastIdx + 1);
+const expDailyValsT = expDailyVals.slice(0, expDailyLastIdx + 1);
+const expDailyYoyT = expDailyYoy.slice(0, expDailyLastIdx + 1);
+
+const shareLastIdx = lastValidIdxMulti(pMonths.length, cats.map(c => catVals[c]));
+const pMonthsT = pMonths.slice(0, shareLastIdx + 1);
+const shareDataT = {}, catYoyT = {};
+cats.forEach(cat => {
+  shareDataT[cat] = shareData[cat].slice(0, shareLastIdx + 1);
+  catYoyT[cat] = catYoy[cat].slice(0, shareLastIdx + 1);
+});
+
+setRange('cliChart', monthLabel(monthsCli[0]), monthLabel(monthsCli[monthsCli.length-1]));
+setRange('cliTable', monthLabel(monthsCli[0]), monthLabel(monthsCli[monthsCli.length-1]));
+setRange('cliCountryMomChart', monthLabel(monthsCli[0]), monthLabel(monthsCli[monthsCli.length-1]));
+setRange('diffusionChart', monthLabel(monthsDiff[0]), monthLabel(monthsDiff[monthsDiff.length-1]));
+setRange('exportChart', monthLabel(expMonthsT[0]), monthLabel(expMonthsT[expMonthsT.length-1]));
+setRange('exportDailyChart', monthLabel(expMonthsDailyT[0]), monthLabel(expMonthsDailyT[expMonthsDailyT.length-1]));
+setRange('shareChart', monthLabel(pMonthsT[0]), monthLabel(pMonthsT[pMonthsT.length-1]));
 {
-  const firstYoyIdx = pMonths.length >= 13 ? 12 : pMonths.length - 1;
-  setRange('shareYoyChart', pMonths.length ? monthLabel(pMonths[firstYoyIdx]) : null, pMonths.length ? monthLabel(pMonths[pMonths.length-1]) : null);
+  const firstYoyIdx = pMonthsT.length >= 13 ? 12 : pMonthsT.length - 1;
+  setRange('shareYoyChart', pMonthsT.length ? monthLabel(pMonthsT[firstYoyIdx]) : null, pMonthsT.length ? monthLabel(pMonthsT[pMonthsT.length-1]) : null);
 }
 setRange('ratesChart', dgs10.dates[0], dgs10.dates[dgs10.dates.length-1]);
 setRange('m2Chart', m2.dates[0], m2.dates[m2.dates.length-1]);
 setRange('walclChart', walcl.dates[0], walcl.dates[walcl.dates.length-1]);
 setRange('vixChart', vix.dates[0], vix.dates[vix.dates.length-1]);
 {
-  const mddAll = Array.from(new Set([mddSP500, mddNASDAQ, mddKOSPI, mddKOSDAQ].flatMap(s => s.dates))).sort();
-  setRange('mddChart', mddAll[0], mddAll[mddAll.length-1]);
+  const mddKrAll = Array.from(new Set([mddKOSPI, mddKOSDAQ].flatMap(s => s.dates))).sort();
+  setRange('mddChartKR', mddKrAll[0], mddKrAll[mddKrAll.length-1]);
+  const mddUsAll = Array.from(new Set([mddSP500, mddNASDAQ].flatMap(s => s.dates))).sort();
+  setRange('mddChartUS', mddUsAll[0], mddUsAll[mddUsAll.length-1]);
 }
+
+// ================= CLI 국가별 요약표 =================
+// 레벨(100 기준)과 전월차(방향)로 국면을 자동 분류. OECD 공식 해석이 아니라 이 대시보드의 자체 기준.
+function interpretCli(level, mom) {
+  if (level == null || mom == null) return '-';
+  if (level >= 100) {
+    if (mom > 0.1) return '매우 강한 확장';
+    if (mom > 0) return '완만한 확장';
+    if (mom > -0.1) return '100 상회, 둔화';
+    return '고레벨이나 뚜렷한 둔화';
+  }
+  if (mom > 0.1) return '강한 개선(100 하회)';
+  if (mom > 0) return '완만한 개선(100 하회)';
+  if (mom > -0.1) return '100 미만, 둔화 지속';
+  return '위축 심화(100 하회)';
+}
+function cliRow(name, arr) {
+  const idx = lastValidIdx(arr);
+  const cur = arr[idx];
+  const prev = idx > 0 ? arr[idx - 1] : null;
+  const mom = (cur != null && prev != null) ? cur - prev : null;
+  return {
+    name,
+    prevMonthLabel: idx > 0 ? monthLabel(months[idx - 1]) : '-',
+    curMonthLabel: idx >= 0 ? monthLabel(months[idx]) : '-',
+    prevVal: prev, curVal: cur, mom,
+    interp: interpretCli(cur, mom),
+  };
+}
+const cliTableRows = [
+  cliRow(`${countryCodes.length}개국 평균(자체계산)`, avgArr),
+  ...countryCodes.map(code => cliRow(D.countries[code] || code, clivals[code])),
+];
+document.getElementById('cliTable').innerHTML = `
+  <table class="clitable">
+    <thead><tr><th>지역</th><th>전월 CLI</th><th>이번월 CLI</th><th>전월차</th><th>해석</th></tr></thead>
+    <tbody>
+      ${cliTableRows.map(r => `
+        <tr>
+          <td>${r.name} <span style="color:#aaa;font-size:11px;">(${r.curMonthLabel})</span></td>
+          <td>${fmt(r.prevVal,2)}</td>
+          <td>${fmt(r.curVal,2)}</td>
+          <td class="${r.mom>=0?'up':'down'}">${r.mom!=null ? (r.mom>=0?'+':'') + fmt(r.mom,3) : '-'}</td>
+          <td>${r.interp}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
 
 const palette = ['#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5','#70AD47','#264478','#9E480E'];
 const COMMON_LINE_OPTS = { tension: 0.15, pointRadius: 0, spanGaps: true };
 
 safeChart('cliChart', () => {
-  const levelRange = robustAxisRange([korArr, avgArr], 0.2);
-  const momRange = robustAxisRange([korMom, avgMom], 0.2);
+  const levelRange = robustAxisRange([korArrT, avgArrT], 0.2);
+  const momRange = robustAxisRange([korMomT, avgMomT], 0.2);
   new Chart(document.getElementById('cliChart'), {
     type: 'line',
-    data: { labels: months.map(monthLabel), datasets: [
-      { label: '한국 CLI', data: korArr, borderColor: palette[0], yAxisID: 'y', ...COMMON_LINE_OPTS },
-      { label: '9개국평균 CLI', data: avgArr, borderColor: palette[1], yAxisID: 'y', ...COMMON_LINE_OPTS },
-      { label: '한국 전월차', data: korMom, borderColor: palette[0], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
-      { label: '평균 전월차', data: avgMom, borderColor: palette[1], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
+    data: { labels: monthsCli.map(monthLabel), datasets: [
+      { label: '한국 CLI', data: korArrT, borderColor: palette[0], yAxisID: 'y', ...COMMON_LINE_OPTS },
+      { label: '13개국평균 CLI', data: avgArrT, borderColor: palette[1], yAxisID: 'y', ...COMMON_LINE_OPTS },
+      { label: '한국 전월차', data: korMomT, borderColor: palette[0], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
+      { label: '평균 전월차', data: avgMomT, borderColor: palette[1], borderDash: [4,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
     ]},
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
       y: { position: 'left', title: { display: true, text: 'CLI 레벨 (코로나 등 극단치는 축 밖으로 잘림)' }, min: levelRange.min, max: levelRange.max },
@@ -339,38 +489,67 @@ safeChart('cliChart', () => {
   });
 });
 
+safeChart('cliCountryMomChart', () => {
+  // 코로나 시국(2020년) 전월차 급등락이 나머지 구간의 변동폭을 가리는 문제가 있어
+  // CLI 레벨 차트와 동일한 Tukey fence 방식으로 축 범위를 클리핑한다.
+  const momRange = robustAxisRange([avgMomT, korMomT, usaMomT, chnMomT], 0.2);
+  new Chart(document.getElementById('cliCountryMomChart'), {
+    type: 'line',
+    data: { labels: monthsCli.map(monthLabel), datasets: [
+      { label: '13개국평균', data: avgMomT, borderColor: palette[4], borderWidth: 3, ...COMMON_LINE_OPTS },
+      { label: '한국', data: korMomT, borderColor: '#333333', borderWidth: 2, ...COMMON_LINE_OPTS },
+      { label: '미국', data: usaMomT, borderColor: palette[6], ...COMMON_LINE_OPTS },
+      { label: '중국', data: chnMomT, borderColor: '#A5A5A5', ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { title: { display: true, text: '전월차 (코로나 등 극단치는 축 밖으로 잘림)' }, min: momRange.min, max: momRange.max },
+    }}
+  });
+});
+
 safeChart('diffusionChart', () => new Chart(document.getElementById('diffusionChart'), {
   type: 'line',
-  data: { labels: months.map(monthLabel), datasets: [
-    { label: 'CLI>100 국가비율(%)', data: above100, borderColor: palette[0], ...COMMON_LINE_OPTS },
-    { label: '전월대비 상승 국가비율(%)', data: rising, borderColor: palette[1], ...COMMON_LINE_OPTS },
+  data: { labels: monthsDiff.map(monthLabel), datasets: [
+    { label: 'CLI>100 국가비율(%)', data: above100T, borderColor: palette[0], ...COMMON_LINE_OPTS },
+    { label: '전월대비 상승 국가비율(%)', data: risingT, borderColor: palette[1], ...COMMON_LINE_OPTS },
   ]},
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }
 }));
 
 safeChart('exportChart', () => new Chart(document.getElementById('exportChart'), {
-  data: { labels: expMonths.map(monthLabel), datasets: [
-    { type: 'bar', label: '수출액(백만달러)', data: expVals, backgroundColor: '#4472C4', yAxisID: 'y', order: 2 },
-    { type: 'line', label: 'YoY(%)', data: expYoy, borderColor: '#E53935', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+  data: { labels: expMonthsT.map(monthLabel), datasets: [
+    { type: 'bar', label: '수출액(억달러)', data: expValsT, backgroundColor: '#4472C4', yAxisID: 'y', order: 2 },
+    { type: 'line', label: 'YoY(%)', data: expYoyT, borderColor: '#F9A825', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
   ]},
   options: { responsive: true, maintainAspectRatio: false, scales: {
-    y: { position: 'left', title: { display: true, text: '수출액(백만$)' } },
+    y: { position: 'left', title: { display: true, text: '수출액(억$)' } },
+    y1: { position: 'right', title: { display: true, text: 'YoY(%)' }, grid: { drawOnChartArea: false } },
+  }}
+}));
+
+safeChart('exportDailyChart', () => new Chart(document.getElementById('exportDailyChart'), {
+  data: { labels: expMonthsDailyT.map(monthLabel), datasets: [
+    { type: 'bar', label: '1일평균 수출액(억달러, 추정)', data: expDailyValsT, backgroundColor: '#4472C4', yAxisID: 'y', order: 2 },
+    { type: 'line', label: 'YoY(%)', data: expDailyYoyT, borderColor: '#F9A825', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+  ]},
+  options: { responsive: true, maintainAspectRatio: false, scales: {
+    y: { position: 'left', title: { display: true, text: '1일평균 수출액(억$)' } },
     y1: { position: 'right', title: { display: true, text: 'YoY(%)' }, grid: { drawOnChartArea: false } },
   }}
 }));
 
 safeChart('shareChart', () => new Chart(document.getElementById('shareChart'), {
   type: 'line',
-  data: { labels: pMonths.map(monthLabel), datasets: cats.map((cat, i) => ({
-    label: cat, data: shareData[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
+  data: { labels: pMonthsT.map(monthLabel), datasets: cats.map((cat, i) => ({
+    label: cat, data: shareDataT[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
   }))},
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '비중(%)' } } } }
 }));
 
 safeChart('shareYoyChart', () => new Chart(document.getElementById('shareYoyChart'), {
   type: 'line',
-  data: { labels: pMonths.map(monthLabel), datasets: cats.map((cat, i) => ({
-    label: cat, data: catYoy[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
+  data: { labels: pMonthsT.map(monthLabel), datasets: cats.map((cat, i) => ({
+    label: cat, data: catYoyT[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
   }))},
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'YoY(%)' } } } }
 }));
@@ -414,28 +593,35 @@ safeChart('vixChart', () => new Chart(document.getElementById('vixChart'), {
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Index' } } } }
 }));
 
-safeChart('mddChart', () => {
-  const mddDatasetsRaw = [
-    { key: 'S&P500', s: mddSP500, color: palette[0] },
-    { key: '나스닥', s: mddNASDAQ, color: palette[1] },
-    { key: 'KOSPI', s: mddKOSPI, color: palette[5] },
-    { key: 'KOSDAQ150(ETF근사)', s: mddKOSDAQ, color: palette[3] },
-  ];
-  const availableMdd = mddDatasetsRaw.filter(d => d.s.dates.length > 0);
-  const unavailableMdd = mddDatasetsRaw.filter(d => d.s.dates.length === 0).map(d => d.key);
-  if (unavailableMdd.length) {
-    document.getElementById('mddMissingNote').textContent = `참고: ${unavailableMdd.join(', ')}는 이 샘플 데이터에 없습니다. fetch_macro_data.py를 로컬에서 실행하면 채워집니다.`;
-  }
-  const allDates = Array.from(new Set(availableMdd.flatMap(d => d.s.dates))).sort();
-  new Chart(document.getElementById('mddChart'), {
-    type: 'line',
-    data: { labels: allDates, datasets: availableMdd.map(d => {
-      const map = {}; d.s.dates.forEach((date,i) => map[date] = d.s.vals[i]);
-      return { label: d.key, data: allDates.map(date => map[date] !== undefined ? map[date] : null), borderColor: d.color, ...COMMON_LINE_OPTS };
-    })},
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'MDD(%)' } } } }
+function buildMddChart(canvasId, missingNoteId, datasetsRaw) {
+  safeChart(canvasId, () => {
+    const available = datasetsRaw.filter(d => d.s.dates.length > 0);
+    const unavailable = datasetsRaw.filter(d => d.s.dates.length === 0).map(d => d.key);
+    if (unavailable.length) {
+      const el = document.getElementById(missingNoteId);
+      if (el) el.textContent = `참고: ${unavailable.join(', ')}는 이 샘플 데이터에 없습니다. fetch_macro_data.py를 로컬에서 실행하면 채워집니다.`;
+    }
+    const allDates = Array.from(new Set(available.flatMap(d => d.s.dates))).sort();
+    new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels: allDates, datasets: available.map(d => {
+        const map = {}; d.s.dates.forEach((date,i) => map[date] = d.s.vals[i]);
+        return { label: d.key, data: allDates.map(date => map[date] !== undefined ? map[date] : null), borderColor: d.color, ...COMMON_LINE_OPTS };
+      })},
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'MDD(%)' } } } }
+    });
   });
-});
+}
+
+buildMddChart('mddChartKR', 'mddMissingNoteKR', [
+  { key: 'KOSPI', s: mddKOSPI, color: palette[5] },
+  { key: 'KOSDAQ150(ETF근사)', s: mddKOSDAQ, color: palette[3] },
+]);
+
+buildMddChart('mddChartUS', 'mddMissingNoteUS', [
+  { key: 'S&P500', s: mddSP500, color: palette[0] },
+  { key: '나스닥', s: mddNASDAQ, color: palette[1] },
+]);
 </script>
 
 </body>
