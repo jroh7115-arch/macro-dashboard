@@ -71,6 +71,9 @@ FRED_MACRO_SERIES = {
     "NASDAQCOM": "나스닥종합지수",
     "WALCL": "Fed 대차대조표(총자산)",
     "BAMLH0A0HYM2": "미국 하이일드 스프레드(ICE BofA OAS)",
+    "DEXKOUS": "원/달러 환율",
+    "DTWEXBGS": "달러인덱스(무역가중 Broad)",
+    "DCOILWTICO": "WTI 유가",
 }
 
 CLI_MONTHS_BACK = 121      # CLI: 10년
@@ -170,23 +173,33 @@ def compute_mdd_series(price_by_date: dict):
 def fetch_yfinance_series(ticker: str, years_back: int):
     try:
         import yfinance as yf
+        import pandas as pd
     except ImportError:
         print("  yfinance가 설치되어 있지 않습니다.")
         return {}
     start = (datetime.now() - timedelta(days=365 * years_back)).strftime("%Y-%m-%d")
-    df = yf.download(ticker, start=start, progress=False)
+    df = yf.download(ticker, start=start, progress=False, auto_adjust=True)
     if df.empty:
         print(f"  {ticker}: 데이터 없음")
         return {}
-    close_col = "Close" if "Close" in df.columns else df.columns[0]
+    # yfinance 신버전은 단일 티커도 (가격종류, 티커) 2단 컬럼(MultiIndex)으로 반환하는데,
+    # 이때 row["Close"]가 스칼라가 아닌 Series로 나와서 최신 pandas에서는 float() 변환이
+    # TypeError로 실패하고 전부 None으로 저장된다(KOSPI/KOSDAQ150 차트가 비어 보였던 원인).
+    # 컬럼을 1단으로 평탄화해서 어떤 버전 조합에서도 스칼라가 나오게 한다.
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    if "Close" not in df.columns:
+        print(f"  {ticker}: Close 컬럼을 찾지 못했습니다 (columns={list(df.columns)})")
+        return {}
     out = {}
-    for idx, row in df.iterrows():
+    for idx, val in df["Close"].items():
         d = idx.strftime("%Y-%m-%d")
-        val = row[close_col]
         try:
-            out[d] = float(val)
+            out[d] = round(float(val), 4)
         except (TypeError, ValueError):
             out[d] = None
+    n_valid = sum(1 for v in out.values() if v is not None)
+    print(f"  {ticker}: {len(out)}개 중 유효값 {n_valid}개")
     return out
 
 
@@ -218,9 +231,10 @@ def main():
         "NASDAQCOM": compute_mdd_series(fred_macro["NASDAQCOM"]),
     }
 
-    print("\n[4/4] yfinance에서 KOSPI / KOSDAQ150 / VKOSPI 수집 중...")
+    print("\n[4/4] yfinance에서 KOSPI / KOSDAQ150 / SOX / VKOSPI 수집 중...")
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
+    sox = fetch_yfinance_series("^SOX", DAILY_YEARS_BACK)
     mdd["KOSPI"] = compute_mdd_series(kospi)
     mdd["KOSDAQ150"] = compute_mdd_series(kosdaq150)
 
@@ -243,7 +257,7 @@ def main():
         "fred_macro": fred_macro,
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
-                     "KOSPI": kospi, "KOSDAQ150": kosdaq150},
+                     "KOSPI": kospi, "KOSDAQ150": kosdaq150, "SOX": sox},
         "mdd": mdd,
     }
 
