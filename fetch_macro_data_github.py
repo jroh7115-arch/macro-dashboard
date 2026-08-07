@@ -74,10 +74,21 @@ FRED_MACRO_SERIES = {
     "DEXKOUS": "원/달러 환율",
     "DTWEXBGS": "달러인덱스(무역가중 Broad)",
     "DCOILWTICO": "WTI 유가",
+    # ISM PMI 원본은 유료 라이선스라 FRED 제공이 중단되어, 무료로 받을 수 있는
+    # 제조업 경기 지표들로 대신한다.
+    "INDPRO": "미국 산업생산지수",
+    "NEWORDER": "미국 핵심자본재 신규수주(항공기 제외 비국방)",
+    "GACDFSA066MSFRBPHI": "필라델피아 연준 제조업지수",
+    "GACDISA066MSFRBNY": "뉴욕(엠파이어스테이트) 연준 제조업지수",
 }
 
-CLI_MONTHS_BACK = 121      # CLI: 10년
+# YoY(전년동월대비)를 첫 표시월부터 그리려면 12개월 전 값이 필요한 월별 시리즈들.
+# 다른 지표보다 13개월 정도 더 과거부터 수집한다.
+MONTHLY_YOY_SERIES = {"M2SL", "INDPRO", "NEWORDER"}
+
+CLI_MONTHS_BACK = 122      # CLI: 10년 + 1개월 (전월차가 첫 표시월부터 계산되도록 여유분)
 DAILY_YEARS_BACK = 10      # 미국 금리/M2/VIX/지수/WALCL, KOSPI/KOSDAQ150: 10년
+M2_EXTRA_DAYS = 400        # YoY 표시 지표(M2/산업생산/신규수주)는 13개월치를 더 수집 (MONTHLY_YOY_SERIES 참고)
 
 
 def month_range(months_back: int):
@@ -219,10 +230,15 @@ def main():
         time.sleep(0.2)
 
     print("\n[2/4] FRED에서 미국 금리·M2·VIX·지수·하이일드 수집 중...")
+    # M2·산업생산·신규수주는 YoY를 계산해서 보여주는 지표라 12개월 전 값이 있어야
+    # 첫 표시월부터 YoY가 그려진다. 다른 지표보다 13개월 더 과거부터 수집한다
+    # (대시보드에서 YoY가 없는 앞쪽 구간은 잘라내고 표시).
+    yoy_start = (datetime.now() - timedelta(days=365 * DAILY_YEARS_BACK + M2_EXTRA_DAYS)).strftime("%Y-%m-%d")
     fred_macro = {}
     for sid, label in FRED_MACRO_SERIES.items():
         print(f"  - {sid} ({label})")
-        fred_macro[sid] = fetch_fred_series(sid, start_date=daily_start)
+        start = yoy_start if sid in MONTHLY_YOY_SERIES else daily_start
+        fred_macro[sid] = fetch_fred_series(sid, start_date=start)
         time.sleep(0.2)
 
     print("\n[3/4] S&P500 / 나스닥 MDD 계산 중...")

@@ -168,7 +168,33 @@
   <div class="err" id="err-soxChart"></div>
 </div>
 
-<h3>4. 시장 심리 (VIX · MDD)</h3>
+<h3>4. 미국 실물경기 · 제조업 (PMI 대용)</h3>
+
+<div class="chart-block">
+  <h2>연준 제조업 서베이: 필라델피아 · 뉴욕(엠파이어스테이트) <span class="range" id="range-fedSurveyChart"></span></h2>
+  <p class="desc">ISM 제조업 PMI는 유료 라이선스라 무료 데이터로는 받을 수 없어, PMI와 상관이 높은 지역 연준의 제조업 서베이 확산지수로 대신 봅니다. 0을 기준으로 위면 제조업 활동 확장, 아래면 위축을 뜻하며, 매월 ISM PMI보다 먼저 발표되어 제조업 경기의 방향을 앞서 가늠하는 데 쓰입니다. 서베이 특성상 월별 변동이 커서 한두 달 움직임보다 추세를 봐야 합니다.</p>
+  <div class="chart-wrap"><canvas id="fedSurveyChart"></canvas></div>
+  <div class="missing" id="fedSurveyMissingNote"></div>
+  <div class="err" id="err-fedSurveyChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>미국 산업생산지수 및 전년동월대비 증감률(YoY) <span class="range" id="range-indproChart"></span></h2>
+  <p class="desc">미국 실물경기의 대표 지표로, 광공업(제조업·광업·유틸리티) 생산량을 지수화한 값입니다. YoY가 플러스면 실물경기 확장, 마이너스로 내려가면 침체 신호로 해석되며, 과거 미국 경기침체 판정에서 핵심적으로 쓰이는 지표 중 하나입니다.</p>
+  <div class="chart-wrap"><canvas id="indproChart"></canvas></div>
+  <div class="missing" id="indproMissingNote"></div>
+  <div class="err" id="err-indproChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>미국 핵심자본재 신규수주 및 YoY (항공기 제외 비국방) <span class="range" id="range-capexChart"></span></h2>
+  <p class="desc">기업들이 기계·장비 등 자본재를 얼마나 새로 주문했는지를 보여주는 설비투자 선행 지표입니다. 변동이 큰 항공기와 국방 수주를 제외해 기업의 순수한 투자 심리를 반영하며, YoY가 꺾이면 기업들이 투자를 줄이기 시작했다는 뜻이라 제조업 경기·반도체 장비 수요보다 앞서 움직이는 경향이 있습니다.</p>
+  <div class="chart-wrap"><canvas id="capexChart"></canvas></div>
+  <div class="missing" id="capexMissingNote"></div>
+  <div class="err" id="err-capexChart"></div>
+</div>
+
+<h3>5. 시장 심리 (VIX · MDD)</h3>
 
 <div class="chart-block">
   <h2>VIX 변동성지수 (미국) <span class="range" id="range-vixChart"></span></h2>
@@ -194,7 +220,7 @@
   <div class="err" id="err-mddChartUS"></div>
 </div>
 
-<h3>5. 지수 종가 추이</h3>
+<h3>6. 지수 종가 추이</h3>
 
 <div class="chart-block">
   <h2>KOSPI 지수 종가 <span class="range" id="range-kospiPriceChart"></span></h2>
@@ -219,6 +245,7 @@
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(DEXKOUS), 달러인덱스(DTWEXBGS, 무역가중 Broad), WTI 유가(DCOILWTICO): FRED. 환율은 뉴욕 정오 기준 고시환율이라 국내 시장 환율과 소폭 다를 수 있습니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
+  - 미국 산업생산(INDPRO), 핵심자본재 신규수주(NEWORDER), 필라델피아 연준 제조업지수(GACDFSA066MSFRBPHI), 뉴욕 연준 제조업지수(GACDISA066MSFRBNY): FRED. ISM 제조업 PMI는 유료 라이선스라 FRED에서 제공되지 않아 이 지표들로 대신합니다.<br>
   - VKOSPI(한국 변동성지수): yfinance(^VKOSPI 티커)로 시도했으나, 야후 파이낸스가 이 티커를 지원하지 않아 확인 결과 데이터를 가져올 수 없었습니다. 그래서 VIX 차트에는 미국 VIX만 표시됩니다.<br>
   - 하이일드 스프레드(BAMLH0A0HYM2, ICE BofA US High Yield OAS): FRED. FRED 정책상 최근 약 3년치만 제공되어 다른 일별 지표(10년)보다 기간이 짧습니다.<br>
   - 상단 신호등 기준값(참고용, 투자 신호 아님): CLI는 100 기준·전월차 방향, 금리차는 0%p 이상 양호·-0.3%p 미만 경계, VIX는 20 미만 양호·30 초과 경계, M2 YoY는 플러스 양호·-2% 미만 경계, 하이일드 스프레드는 4%p 미만 양호·6%p 초과 경계로 계산합니다.<br>
@@ -367,6 +394,19 @@ const hySpread = seriesToSorted(fm.BAMLH0A0HYM2);
 const usdkrw = seriesToSorted(fm.DEXKOUS);
 const dollarIdx = seriesToSorted(fm.DTWEXBGS);
 const wti = seriesToSorted(fm.DCOILWTICO);
+const indpro = seriesToSorted(fm.INDPRO);
+const neworder = seriesToSorted(fm.NEWORDER);
+const phillyFed = seriesToSorted(fm.GACDFSA066MSFRBPHI);
+const empireFed = seriesToSorted(fm.GACDISA066MSFRBNY);
+function yoyOfSorted(s) {
+  return s.vals.map((v,i) => {
+    if (i < 12) return null;
+    const prev = s.vals[i-12];
+    return (prev && v !== null) ? (v/prev - 1) * 100 : null;
+  });
+}
+const indproYoy = yoyOfSorted(indpro);
+const neworderYoy = yoyOfSorted(neworder);
 const m2Yoy = m2.vals.map((v,i) => {
   if (i < 12) return null;
   const prev = m2.vals[i-12];
@@ -401,6 +441,15 @@ function lastValidIdxMulti(len, arrays) {
     if (arrays.some(arr => arr[i] != null && !isNaN(arr[i]))) return i;
   }
   return len - 1;
+}
+// 처음으로 값이 나오는 인덱스. YoY(전년동월대비)처럼 수집 시작 후 첫 12개월이
+// 비어 있는 시리즈를 차트에 그릴 때, 값이 없는 앞쪽 구간을 잘라내 선이 중간부터
+// 뜬금없이 시작하는 것처럼 보이지 않게 하는 용도. (값이 하나도 없으면 0 = 전체 표시)
+function firstValidIdx(arr) {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] != null && !isNaN(arr[i])) return i;
+  }
+  return 0;
 }
 
 const latestIdx = lastValidIdx(korArr);
@@ -506,29 +555,39 @@ function setRange(id, first, last) {
 // months/expMonths/pMonths 배열은 아직 발표 전인 최신월(예: 이번 달)까지 자리를 잡아두기 때문에
 // 실제 값이 있는 마지막 시점 이후는 잘라내서, 차트와 기간 표시가 "실제 데이터가 있는 기간"만
 // 보여주도록 한다. (카드에 쓰인 latestIdx 등은 이 트리밍과 무관하게 그대로 동작)
+// 전월차(mom)는 첫 달에 비교 대상이 없어 null이라, 차트는 두 번째 달부터 시작한다.
+// (수집을 1개월 여유분 포함 122개월로 하므로 실제 표시 구간은 그대로 10년이 유지됨)
 const cliLastIdx = lastValidIdxMulti(months.length, [korArr, avgArr]);
-const monthsCli = months.slice(0, cliLastIdx + 1);
-const korArrT = korArr.slice(0, cliLastIdx + 1);
-const avgArrT = avgArr.slice(0, cliLastIdx + 1);
-const korMomT = korMom.slice(0, cliLastIdx + 1);
-const avgMomT = avgMom.slice(0, cliLastIdx + 1);
-const usaMomT = usaMom.slice(0, cliLastIdx + 1);
-const chnMomT = chnMom.slice(0, cliLastIdx + 1);
+const cliStartIdx = Math.min(firstValidIdx(korMom), cliLastIdx);
+const monthsCli = months.slice(cliStartIdx, cliLastIdx + 1);
+const korArrT = korArr.slice(cliStartIdx, cliLastIdx + 1);
+const avgArrT = avgArr.slice(cliStartIdx, cliLastIdx + 1);
+const korMomT = korMom.slice(cliStartIdx, cliLastIdx + 1);
+const avgMomT = avgMom.slice(cliStartIdx, cliLastIdx + 1);
+const usaMomT = usaMom.slice(cliStartIdx, cliLastIdx + 1);
+const chnMomT = chnMom.slice(cliStartIdx, cliLastIdx + 1);
 
 const diffLastIdx = lastValidIdxMulti(months.length, [above100, rising]);
-const monthsDiff = months.slice(0, diffLastIdx + 1);
-const above100T = above100.slice(0, diffLastIdx + 1);
-const risingT = rising.slice(0, diffLastIdx + 1);
+const diffStartIdx = Math.min(firstValidIdx(rising), diffLastIdx);
+const monthsDiff = months.slice(diffStartIdx, diffLastIdx + 1);
+const above100T = above100.slice(diffStartIdx, diffLastIdx + 1);
+const risingT = rising.slice(diffStartIdx, diffLastIdx + 1);
 
+// 수출 차트: YoY(전년동월대비)는 수집 시작 후 첫 12개월이 비어서 선이 차트 중간부터
+// 시작해 보기 안 좋다. YoY가 존재하는 첫 달부터 표시해서 막대와 선이 같이 시작하게
+// 한다. (로컬 수집 스크립트가 12개월 더 과거부터 수집해주면 표시 구간이 자동으로
+// 그만큼 다시 길어짐)
 const expLastIdx = lastValidIdxMulti(expMonths.length, [expVals]);
-const expMonthsT = expMonths.slice(0, expLastIdx + 1);
-const expValsT = expVals.slice(0, expLastIdx + 1);
-const expYoyT = expYoy.slice(0, expLastIdx + 1);
+const expStartIdx = Math.min(firstValidIdx(expYoy), expLastIdx);
+const expMonthsT = expMonths.slice(expStartIdx, expLastIdx + 1);
+const expValsT = expVals.slice(expStartIdx, expLastIdx + 1);
+const expYoyT = expYoy.slice(expStartIdx, expLastIdx + 1);
 
 const expDailyLastIdx = lastValidIdxMulti(expMonths.length, [expDailyVals]);
-const expMonthsDailyT = expMonths.slice(0, expDailyLastIdx + 1);
-const expDailyValsT = expDailyVals.slice(0, expDailyLastIdx + 1);
-const expDailyYoyT = expDailyYoy.slice(0, expDailyLastIdx + 1);
+const expDailyStartIdx = Math.min(firstValidIdx(expDailyYoy), expDailyLastIdx);
+const expMonthsDailyT = expMonths.slice(expDailyStartIdx, expDailyLastIdx + 1);
+const expDailyValsT = expDailyVals.slice(expDailyStartIdx, expDailyLastIdx + 1);
+const expDailyYoyT = expDailyYoy.slice(expDailyStartIdx, expDailyLastIdx + 1);
 
 const shareLastIdx = lastValidIdxMulti(pMonths.length, cats.map(c => catVals[c]));
 const pMonthsT = pMonths.slice(0, shareLastIdx + 1);
@@ -537,6 +596,23 @@ cats.forEach(cat => {
   shareDataT[cat] = shareData[cat].slice(0, shareLastIdx + 1);
   catYoyT[cat] = catYoy[cat].slice(0, shareLastIdx + 1);
 });
+// 품목별 YoY 차트도 같은 이유로 YoY가 존재하는 첫 달부터 표시 (비중 차트는 전 구간 그대로)
+const shareYoyStartIdx = Math.min(
+  Math.min(...cats.map(c => firstValidIdx(catYoyT[c]))),
+  Math.max(pMonthsT.length - 1, 0)
+);
+const pMonthsYoyT = pMonthsT.slice(shareYoyStartIdx);
+const catYoyDisplayT = {};
+cats.forEach(cat => { catYoyDisplayT[cat] = catYoyT[cat].slice(shareYoyStartIdx); });
+
+// M2·산업생산·신규수주 YoY도 동일: 수집을 13개월 더 과거부터 하고, YoY가 없는 앞쪽은 잘라서 표시
+function trimToYoyStart(s, yoy) {
+  const start = Math.min(firstValidIdx(yoy), Math.max(s.dates.length - 1, 0));
+  return { dates: s.dates.slice(start), vals: s.vals.slice(start), yoy: yoy.slice(start) };
+}
+const m2T = trimToYoyStart(m2, m2Yoy);
+const indproT = trimToYoyStart(indpro, indproYoy);
+const neworderT = trimToYoyStart(neworder, neworderYoy);
 
 setRange('cliChart', monthLabel(monthsCli[0]), monthLabel(monthsCli[monthsCli.length-1]));
 setRange('cliTable', monthLabel(monthsCli[0]), monthLabel(monthsCli[monthsCli.length-1]));
@@ -545,12 +621,15 @@ setRange('diffusionChart', monthLabel(monthsDiff[0]), monthLabel(monthsDiff[mont
 setRange('exportChart', monthLabel(expMonthsT[0]), monthLabel(expMonthsT[expMonthsT.length-1]));
 setRange('exportDailyChart', monthLabel(expMonthsDailyT[0]), monthLabel(expMonthsDailyT[expMonthsDailyT.length-1]));
 setRange('shareChart', monthLabel(pMonthsT[0]), monthLabel(pMonthsT[pMonthsT.length-1]));
-{
-  const firstYoyIdx = pMonthsT.length >= 13 ? 12 : pMonthsT.length - 1;
-  setRange('shareYoyChart', pMonthsT.length ? monthLabel(pMonthsT[firstYoyIdx]) : null, pMonthsT.length ? monthLabel(pMonthsT[pMonthsT.length-1]) : null);
-}
+setRange('shareYoyChart', pMonthsYoyT.length ? monthLabel(pMonthsYoyT[0]) : null, pMonthsYoyT.length ? monthLabel(pMonthsYoyT[pMonthsYoyT.length-1]) : null);
 setRange('ratesChart', dgs10.dates[0], dgs10.dates[dgs10.dates.length-1]);
-setRange('m2Chart', m2.dates[0], m2.dates[m2.dates.length-1]);
+setRange('m2Chart', m2T.dates[0], m2T.dates[m2T.dates.length-1]);
+setRange('indproChart', indproT.dates[0], indproT.dates[indproT.dates.length-1]);
+setRange('capexChart', neworderT.dates[0], neworderT.dates[neworderT.dates.length-1]);
+{
+  const fedAll = Array.from(new Set([...phillyFed.dates, ...empireFed.dates])).sort();
+  setRange('fedSurveyChart', fedAll[0], fedAll[fedAll.length-1]);
+}
 setRange('walclChart', walcl.dates[0], walcl.dates[walcl.dates.length-1]);
 setRange('hySpreadChart', hySpread.dates[0], hySpread.dates[hySpread.dates.length-1]);
 {
@@ -717,8 +796,8 @@ safeChart('shareChart', () => new Chart(document.getElementById('shareChart'), {
 
 safeChart('shareYoyChart', () => new Chart(document.getElementById('shareYoyChart'), {
   type: 'line',
-  data: { labels: pMonthsT.map(monthLabel), datasets: cats.map((cat, i) => ({
-    label: cat, data: catYoyT[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
+  data: { labels: pMonthsYoyT.map(monthLabel), datasets: cats.map((cat, i) => ({
+    label: cat, data: catYoyDisplayT[cat], borderColor: palette[i % palette.length], ...COMMON_LINE_OPTS
   }))},
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'YoY(%)' } } } }
 }));
@@ -736,9 +815,9 @@ safeChart('ratesChart', () => new Chart(document.getElementById('ratesChart'), {
 }));
 
 safeChart('m2Chart', () => new Chart(document.getElementById('m2Chart'), {
-  data: { labels: m2.dates, datasets: [
-    { type: 'line', label: 'M2(십억달러)', data: m2.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
-    { type: 'line', label: 'M2 YoY(%)', data: m2Yoy, borderColor: '#ED7D31', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+  data: { labels: m2T.dates, datasets: [
+    { type: 'line', label: 'M2(십억달러)', data: m2T.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
+    { type: 'line', label: 'M2 YoY(%)', data: m2T.yoy, borderColor: '#ED7D31', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
   ]},
   options: { responsive: true, maintainAspectRatio: false, scales: {
     y: { position: 'left', title: { display: true, text: 'M2(십억$)' } },
@@ -764,6 +843,61 @@ safeChart('hySpreadChart', () => new Chart(document.getElementById('hySpreadChar
 
 // ================= 환율 · 원자재 · 반도체 =================
 const NEW_DATA_MISSING_MSG = '데이터가 아직 없습니다. GitHub Actions 자동 갱신(하루 2회)이 한 번 돌고 나면 표시됩니다.';
+
+// ================= 미국 실물경기 · 제조업 =================
+safeChart('fedSurveyChart', () => {
+  if (phillyFed.dates.length === 0 && empireFed.dates.length === 0) {
+    document.getElementById('fedSurveyMissingNote').textContent = NEW_DATA_MISSING_MSG;
+    return;
+  }
+  const allDates = Array.from(new Set([...phillyFed.dates, ...empireFed.dates])).sort();
+  const phMap = {}; phillyFed.dates.forEach((d,i) => phMap[d] = phillyFed.vals[i]);
+  const emMap = {}; empireFed.dates.forEach((d,i) => emMap[d] = empireFed.vals[i]);
+  new Chart(document.getElementById('fedSurveyChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: [
+      { label: '필라델피아 연준', data: allDates.map(d => phMap[d] !== undefined ? phMap[d] : null), borderColor: '#264478', borderWidth: 2.5, ...COMMON_LINE_OPTS },
+      { label: '뉴욕 연준(엠파이어)', data: allDates.map(d => emMap[d] !== undefined ? emMap[d] : null), borderColor: '#ED7D31', borderWidth: 2, ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { title: { display: true, text: '확산지수 (0 기준: 위=확장, 아래=위축)' }, grid: { color: ctx => ctx.tick.value === 0 ? '#999' : '#eee', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } },
+    }}
+  });
+});
+
+safeChart('indproChart', () => {
+  if (indproT.dates.length === 0) {
+    document.getElementById('indproMissingNote').textContent = NEW_DATA_MISSING_MSG;
+    return;
+  }
+  new Chart(document.getElementById('indproChart'), {
+    data: { labels: indproT.dates, datasets: [
+      { type: 'line', label: '산업생산지수', data: indproT.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
+      { type: 'line', label: 'YoY(%)', data: indproT.yoy, borderColor: '#D84315', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { position: 'left', title: { display: true, text: '지수(2017=100)' } },
+      y1: { position: 'right', title: { display: true, text: 'YoY(%)', color: '#D84315' }, ticks: { color: '#D84315' }, grid: { drawOnChartArea: false } },
+    }}
+  });
+});
+
+safeChart('capexChart', () => {
+  if (neworderT.dates.length === 0) {
+    document.getElementById('capexMissingNote').textContent = NEW_DATA_MISSING_MSG;
+    return;
+  }
+  new Chart(document.getElementById('capexChart'), {
+    data: { labels: neworderT.dates, datasets: [
+      { type: 'line', label: '신규수주(백만달러)', data: neworderT.vals, borderColor: '#264478', yAxisID: 'y', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', order: 2, ...COMMON_LINE_OPTS },
+      { type: 'line', label: 'YoY(%)', data: neworderT.yoy, borderColor: '#D84315', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { position: 'left', title: { display: true, text: '신규수주(백만$)' } },
+      y1: { position: 'right', title: { display: true, text: 'YoY(%)', color: '#D84315' }, ticks: { color: '#D84315' }, grid: { drawOnChartArea: false } },
+    }}
+  });
+});
 
 safeChart('fxChart', () => {
   if (usdkrw.dates.length === 0 && dollarIdx.dates.length === 0) {
