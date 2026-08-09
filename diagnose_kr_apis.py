@@ -1,103 +1,129 @@
-"""KOSIS/관세청 API 탐색 스크립트 (일회성).
+"""관세청 API로 기존 data.js 값을 재현할 수 있는지 역추적하는 스크립트 (일회성).
 
-1단계 진단에서 두 API 모두 GitHub Actions(해외 IP)에서 정상 응답하는 것을 확인했다.
-이제 수출 데이터를 자동 수집하려면 아래를 확정해야 한다.
-  (1) 관세청 품목별 API가 최신 몇 월치까지 주는가 (6월/7월 데이터 존재 여부)
-  (2) 수출 총액을 어디서 가져올 것인가 (관세청 총계 vs KOSIS 표)
+기존 수출 데이터는 로컬 PC의 fetch_macro_data.py가 만든 것이라 어떤 HS코드를
+어떤 품목으로 묶었는지 모른다. 새 달을 자동으로 이어붙이려면 그 정의를 똑같이
+맞춰야 하므로, 이미 값이 있는 2026-05를 API로 다시 받아 후보 HS코드 조합 중
+저장된 값과 일치하는 것을 찾는다.
+
 확인이 끝나면 이 파일과 diagnose-kr-apis.yml 워크플로는 삭제한다.
 """
 
 import os
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 
 import requests
 
 CUSTOMS_KEY = os.environ.get("CUSTOMS_SERVICE_KEY", "")
-KOSIS_KEY = os.environ.get("KOSIS_API_KEY", "")
-
 CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 
+# data.js에 저장되어 있는 2026-05 실제 값 (역추적 목표)
+TARGET_TOTAL_USD = 87821386 * 1000        # export_total_1000usd는 천달러 단위
+TARGETS = {
+    "반도체": 29433286302.0,
+    "자동차": 5492266174.0,
+    "이차전지": 687989142.0,
+    "선박": 2456481037.0,
+    "철강판재류": 367383321.0,
+}
 
-def customs_call(label, **params):
-    print(f"\n=== {label} ===")
-    p = {"serviceKey": CUSTOMS_KEY}
-    p.update(params)
-    print("params:", {k: v for k, v in params.items()})
-    try:
-        res = requests.get(CUSTOMS_URL, params=p, timeout=30)
-    except Exception as e:
-        print("실패:", type(e).__name__, e)
-        return
+
+def fetch_month(yymm):
+    print(f"\n=== {yymm} 전체 품목 조회 ===")
+    res = requests.get(
+        CUSTOMS_URL,
+        params={
+            "serviceKey": CUSTOMS_KEY,
+            "strtYymm": yymm,
+            "endYymm": yymm,
+            "hsSgn": "",
+        },
+        timeout=120,
+    )
     print("HTTP", res.status_code, len(res.content), "bytes")
-    try:
-        root = ET.fromstring(res.text)
-    except Exception as e:
-        print("XML 파싱 실패:", e, "| 앞부분:", res.text[:300])
-        return
-    msg = root.findtext(".//resultMsg")
-    print("resultMsg:", msg)
-    items = root.findall(".//item")
-    print("item 수:", len(items))
-    for it in items[:6]:
-        print(
-            "  year=", it.findtext("year"),
-            "hs=", it.findtext("hsCode"),
-            "expDlr=", it.findtext("expDlr"),
-            "stat=", (it.findtext("statKor") or "")[:30],
-        )
-    years = sorted({it.findtext("year") for it in items if it.findtext("year")})
-    print("응답에 포함된 연월:", years)
+    root = ET.fromstring(res.text)
+    print("resultMsg:", root.findtext(".//resultMsg"))
+
+    by_hs = {}
+    total_row = None
+    for it in root.findall(".//item"):
+        year = it.findtext("year")
+        hs = (it.findtext("hsCode") or "").strip()
+        try:
+            exp = float(it.findtext("expDlr") or 0)
+        except ValueError:
+            continue
+        if year == "총계":
+            total_row = exp
+            continue
+        if hs:
+            by_hs[hs] = exp
+    print("품목 수:", len(by_hs))
+    print("총계 행 expDlr:", f"{total_row:,.0f}" if total_row is not None else None)
+    print("전체 합산       :", f"{sum(by_hs.values()):,.0f}")
+    print("data.js 저장 총액:", f"{TARGET_TOTAL_USD:,.0f}")
+    return by_hs, total_row
 
 
-# (1) 품목(반도체 HS8542) 최신월 확인 - 6월/7월이 나오는지
-customs_call("반도체 8542, 202604~202608", strtYymm="202604", endYymm="202608", hsSgn="8542")
+def psum(by_hs, *prefixes):
+    return sum(v for hs, v in by_hs.items() if hs.startswith(prefixes))
 
-# (2) hsSgn을 비우거나 총계 코드로 두면 전체 수출총액이 나오는지 확인
-customs_call("hsSgn 미지정, 202605~202607", strtYymm="202605", endYymm="202607")
-customs_call("hsSgn='总' 대신 총계 시도 (빈문자열)", strtYymm="202605", endYymm="202607", hsSgn="")
 
-# (3) 2단위 HS로 조회하면 그 류의 합계가 나오는지 (총액 계산 가능성 확인)
-customs_call("HS 2단위 85류, 202606", strtYymm="202606", endYymm="202606", hsSgn="85")
-
-# ------------------------------------------------------------------
-# KOSIS: 수출총액이 들어있는 표 찾기
-# ------------------------------------------------------------------
-def kosis_search(label, search_nm):
-    print(f"\n=== KOSIS 검색: {label} ===")
-    url = "https://kosis.kr/openapi/statisticsSearch.do"
-    params = {
-        "method": "getList",
-        "apiKey": KOSIS_KEY,
-        "format": "json",
-        "jsonVD": "Y",
-        "searchNm": search_nm,
-        "startCount": "1",
-        "resultCount": "20",
+def report(by_hs):
+    print("\n=== 후보 HS코드별 합계 (2026-05) ===")
+    candidates = {
+        "8541 (반도체소자)": ("8541",),
+        "8542 (집적회로)": ("8542",),
+        "8541+8542": ("8541", "8542"),
+        "8703 (승용차)": ("8703",),
+        "8704 (화물차)": ("8704",),
+        "8703+8704": ("8703", "8704"),
+        "8507 (축전지)": ("8507",),
+        "850760 (리튬이온)": ("850760",),
+        "89 (선박류 전체)": ("89",),
+        "8901": ("8901",),
+        "8902": ("8902",),
+        "8904": ("8904",),
+        "8905": ("8905",),
+        "8906": ("8906",),
+        "8901+8902+8904+8905+8906": ("8901", "8902", "8904", "8905", "8906"),
+        "72 (철강 전체)": ("72",),
+        "7208": ("7208",),
+        "7209": ("7209",),
+        "7210": ("7210",),
+        "7211": ("7211",),
+        "7212": ("7212",),
+        "7208~7212": ("7208", "7209", "7210", "7211", "7212"),
+        "7219": ("7219",),
+        "7225": ("7225",),
     }
-    try:
-        res = requests.get(url, params=params, timeout=30)
-    except Exception as e:
-        print("실패:", type(e).__name__, e)
-        return
-    print("HTTP", res.status_code, len(res.content), "bytes")
-    try:
-        data = res.json()
-    except Exception:
-        print("JSON 아님, 앞부분:", res.text[:400])
-        return
-    if isinstance(data, dict):
-        print("응답(dict):", str(data)[:400])
-        return
-    for row in data[:20]:
-        print(
-            "  ORG_ID=", row.get("ORG_ID"),
-            "TBL_ID=", row.get("TBL_ID"),
-            "|", (row.get("TBL_NM") or "")[:50],
-            "| 수록기간:", row.get("PRD_DE"), row.get("REC_TBL_SE"),
-        )
+    for label, pref in candidates.items():
+        print(f"  {label:32s} = {psum(by_hs, *pref):>18,.0f}")
+
+    print("\n=== 저장값과 일치하는 조합 찾기 ===")
+    for cat, target in TARGETS.items():
+        hits = []
+        for label, pref in candidates.items():
+            got = psum(by_hs, *pref)
+            if target and abs(got - target) / target < 0.005:
+                hits.append(f"{label} (오차 {abs(got-target)/target*100:.3f}%)")
+        print(f"  {cat} (목표 {target:,.0f}): {hits if hits else '단일 후보로는 일치 없음'}")
+
+    # 일치가 없으면 목표값에 가까운 개별 HS 4자리 묶음을 직접 탐색
+    print("\n=== 목표값에 근접한 HS 4자리 코드 (오차 1% 이내) ===")
+    by4 = defaultdict(float)
+    for hs, v in by_hs.items():
+        by4[hs[:4]] += v
+    for cat, target in TARGETS.items():
+        near = [(k, v) for k, v in by4.items() if target and abs(v - target) / target < 0.01]
+        print(f"  {cat}: {sorted(near, key=lambda x: -x[1])[:5]}")
 
 
-kosis_search("품목별 수출입", "품목별 수출입")
-kosis_search("수출입 총괄", "수출입 총괄")
+by_hs, total_row = fetch_month("202605")
+report(by_hs)
+
+# 새로 추가할 달(2026-06)도 같은 방식으로 받을 수 있는지 확인
+by_hs6, total6 = fetch_month("202606")
+print("\n2026-06 총계(달러):", f"{total6:,.0f}" if total6 else None)
 
 print("\n탐색 완료.")
