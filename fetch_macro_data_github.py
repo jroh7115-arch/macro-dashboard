@@ -79,7 +79,10 @@ DEFAULT_CATEGORIES = list(CATEGORY_HS)
 # 않는다. 관세청 API가 자주 끊기므로 한 번에 다 받지 않고, 실행마다 아직 새 기준으로
 # 바뀌지 않은 달을 조금씩 채워 나간다(product_basis_months에 기록).
 CATEGORY_BASIS = "motie-semi-v1"
-BACKFILL_PER_RUN = 15
+# 분류 기준을 바꾼 직후에는 과거 달이 새 기준과 옛 기준으로 섞여 그래프에 가짜
+# 단차가 보이므로, 그럴 때는 BACKFILL_PER_RUN 환경변수를 크게 줘서 한 번에
+# 몰아 받는다(워크플로의 backfill 입력값). 평소 정기 실행은 기본값 15로 가볍게.
+BACKFILL_PER_RUN = int(os.environ.get("BACKFILL_PER_RUN") or 15)
 
 # 조업일수 계산 기준이 바뀌면 1일평균 수출액 전 구간을 새 기준으로 다시 계산해야
 # 한다. data.js에 이 값을 같이 저장해 두고, 코드의 기준과 다르면 전체 재계산한다.

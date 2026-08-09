@@ -4,7 +4,12 @@ on:
   schedule:
     - cron: '0 22 * * *'
     - cron: '0 7 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '품목 분류 재수집 개월 수 (기준 변경 직후 몰아받기용)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -31,6 +36,7 @@ jobs:
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           CUSTOMS_SERVICE_KEY: ${{ secrets.CUSTOMS_SERVICE_KEY }}
+          BACKFILL_PER_RUN: ${{ inputs.backfill }}
         run: python fetch_macro_data_github.py
 
       - name: Commit and push data.js if it changed
