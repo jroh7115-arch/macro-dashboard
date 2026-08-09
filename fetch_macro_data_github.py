@@ -250,22 +250,37 @@ def korea_working_days(year: int, month: int):
     )
 
 
+def customs_request(yymm: str, attempts: int = 3):
+    """관세청 API 호출. 서버가 간헐적으로 접속 타임아웃을 내므로 재시도한다.
+
+    https가 막히는 경우도 관측돼 마지막 시도는 http로 넘어간다.
+    """
+    params = {
+        "serviceKey": CUSTOMS_SERVICE_KEY,
+        "strtYymm": yymm,
+        "endYymm": yymm,
+        "hsSgn": "",
+    }
+    last_err = None
+    for i in range(attempts):
+        url = CUSTOMS_URL if i < attempts - 1 else CUSTOMS_URL.replace("https://", "http://")
+        try:
+            res = requests.get(url, params=params, timeout=(10, 90))
+            res.raise_for_status()
+            return res
+        except Exception as e:
+            last_err = e
+            print(f"    시도 {i+1}/{attempts} 실패({type(e).__name__}), 재시도 대기...")
+            time.sleep(5 * (i + 1))
+    raise last_err
+
+
 def fetch_customs_month(yymm: str):
     """한 달치 전체 HS코드 수출실적을 받아 (총액USD, {품목: 금액USD})로 정리.
 
     아직 발표 전인 달은 빈 응답이 오므로 None을 돌려준다.
     """
-    res = requests.get(
-        CUSTOMS_URL,
-        params={
-            "serviceKey": CUSTOMS_SERVICE_KEY,
-            "strtYymm": yymm,
-            "endYymm": yymm,
-            "hsSgn": "",
-        },
-        timeout=120,
-    )
-    res.raise_for_status()
+    res = customs_request(yymm)
     root = ET.fromstring(res.text)
     code = root.findtext(".//resultCode")
     if code not in (None, "00"):
@@ -326,8 +341,9 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
             print(f"    {ym}: 기존 {implied}일 vs 지금 계산 {calc}일")
         print("    -> holidays 패키지 버전이 바뀌었을 수 있습니다. 워크플로의 버전 고정을 "
               "확인하세요. 이대로 두면 1일평균 수출액에 인위적인 단차가 생깁니다.")
-    else:
-        print(f"  조업일수 계산 검증: 기존 {checked}개월과 모두 일치")
+        return False
+    print(f"  조업일수 계산 검증: 기존 {checked}개월과 모두 일치")
+    return True
 
 
 def update_export_data(existing):
@@ -350,7 +366,7 @@ def update_export_data(existing):
             m -= 1
             if m == 0:
                 m, y = 12, y - 1
-        check_workday_consistency(total_1000, daily_1000, set(targets))
+        consistent = check_workday_consistency(total_1000, daily_1000, set(targets))
         for yymm in sorted(targets):
             print(f"  - {yymm}")
             try:
@@ -372,6 +388,20 @@ def update_export_data(existing):
                 f"반도체 {cats['반도체']/1e8:,.1f}억달러"
             )
             time.sleep(0.5)
+
+        # 1일평균은 총액/조업일수로 유도되는 값이라, 검증을 통과했을 때는 전 구간을
+        # 한 기준으로 다시 계산해 둔다. API가 일시적으로 죽어 일부 달만 갱신되는
+        # 경우에도 시리즈가 서로 다른 기준으로 섞이지 않는다.
+        if consistent:
+            fixed = 0
+            for ym, total in total_1000.items():
+                wd = korea_working_days(int(ym[:4]), int(ym[4:]))
+                new_avg = round(total / wd, 1) if wd else None
+                if daily_1000.get(ym) != new_avg:
+                    daily_1000[ym] = new_avg
+                    fixed += 1
+            if fixed:
+                print(f"  1일평균 수출액 {fixed}개월을 현재 조업일수 기준으로 재계산했습니다.")
 
     months_sorted = sorted(total_1000)
     if months_sorted:
