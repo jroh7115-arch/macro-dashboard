@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <title>한국 매크로 수출·경기선행·시장심리 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- 확대/축소·이동: 10년치 일별 차트를 한 화면에 다 그리면 구분이 안 돼서 넣었다.
+     hammer.js는 모바일 핀치 줌에 필요하다. -->
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <!-- data.js는 하루 두 번 바뀌는데 GitHub Pages가 10분간 캐시해 새로고침해도 옛 데이터가
      보이는 일이 잦았다. 캐시를 우회하도록 매 로드마다 다른 쿼리를 붙여 받아온다.
      (Ctrl+F5 없이도 항상 최신 data.js를 읽게 하는 목적) -->
@@ -45,6 +49,12 @@
   .clitable th:last-child, .clitable td:last-child { text-align: left; }
   .clitable thead th { color: #666; font-weight: 600; border-bottom: 2px solid #ccc; }
   .clitable tbody tr:hover { background: #f7f9fc; }
+  .rangebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 8px 0; }
+  .rangebar button { font: inherit; font-size: 12px; padding: 3px 10px; border: 1px solid #ccd4e0;
+    background: #fff; color: #445; border-radius: 14px; cursor: pointer; }
+  .rangebar button:hover { background: #eef2fa; }
+  .rangebar button.on { background: #4472C4; border-color: #4472C4; color: #fff; }
+  .rangebar .hint { font-size: 11.5px; color: #999; margin-left: auto; }
 </style>
 </head>
 <body>
@@ -55,6 +65,7 @@
 <div class="signal-block">
   <div class="signal-overall" id="signalOverall"></div>
   <div class="signals" id="signals"></div>
+  <p class="signal-note">모든 차트는 <strong>마우스 휠로 확대</strong>, <strong>드래그로 좌우 이동</strong>, <strong>더블클릭으로 초기화</strong>할 수 있습니다. 차트 위 기간 버튼으로 구간을 바로 바꿀 수도 있습니다. 10년치 일별 차트는 기본이 최근 1년으로 맞춰져 있습니다.</p>
   <p class="signal-note">신호등 색은 이 페이지가 각 지표의 최신값을 미리 정해둔 기준값과 자동으로 비교해서 매깁니다. data.js를 새로 받아 새로고침하면 최신 수치로 다시 비교되어 색이 그때그때 바뀝니다(별도 설정 불필요). 기준값은 참고용 경험적 기준이며 투자 신호가 아닙니다.</p>
 </div>
 
@@ -915,6 +926,81 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 const COMMON_LINE_OPTS = { tension: 0.15, pointRadius: 0, spanGaps: true };
+
+// ================= 확대/축소 · 기간 선택 =================
+// 10년치 일별 차트는 한 화면에 다 그리면 선이 뭉개져 구분이 안 된다. 휠 확대·드래그
+// 이동을 전 차트에 켜고, 일별 차트에는 기간 버튼을 붙여 기본을 최근 1년으로 둔다.
+// 플러그인 기본값을 통째로 갈아끼우면 drag 같은 내부 키가 사라져서
+// "Cannot read properties of undefined (reading 'enabled')"로 전 차트가 깨진다.
+// 반드시 기존 기본값에 얹어서 필요한 값만 바꾼다.
+(function enableZoom() {
+  const z = window.Chart && Chart.defaults && Chart.defaults.plugins && Chart.defaults.plugins.zoom;
+  if (!z) { console.warn('zoom 플러그인 미로딩 - 확대/축소 없이 그립니다.'); return; }
+  z.zoom.wheel.enabled = true;
+  z.zoom.wheel.speed = 0.08;
+  z.zoom.pinch.enabled = true;
+  z.zoom.mode = 'x';
+  z.pan.enabled = true;
+  z.pan.mode = 'x';
+  z.limits = { x: { minRange: 5 } };
+})();
+
+// 거래일 수 기준 기간 프리셋(일별 차트용)
+const RANGE_PRESETS_DAILY = [
+  { label: '1개월', n: 21 }, { label: '3개월', n: 63 }, { label: '6개월', n: 126 },
+  { label: '1년', n: 252 }, { label: '3년', n: 756 }, { label: '전체', n: null },
+];
+// 월별 차트용(개월 수)
+const RANGE_PRESETS_MONTHLY = [
+  { label: '1년', n: 12 }, { label: '3년', n: 36 }, { label: '5년', n: 60 },
+  { label: '전체', n: null },
+];
+
+function addRangeBar(canvasId, presets, defaultLabel) {
+  const chart = Chart.getChart(canvasId);
+  if (!chart) return;
+  const canvas = document.getElementById(canvasId);
+  const wrap = canvas.closest('.chart-wrap');
+  if (!wrap || wrap.previousElementSibling?.classList?.contains('rangebar')) return;
+
+  const bar = document.createElement('div');
+  bar.className = 'rangebar';
+  const total = chart.data.labels.length;
+
+  function apply(preset, btn) {
+    bar.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+    if (preset.n == null) {
+      delete chart.options.scales.x.min;
+      delete chart.options.scales.x.max;
+    } else {
+      chart.options.scales.x.min = Math.max(0, total - preset.n);
+      chart.options.scales.x.max = total - 1;
+    }
+    chart.update('none');
+  }
+  presets.forEach(preset => {
+    const btn = document.createElement('button');
+    btn.textContent = preset.label;
+    btn.onclick = () => apply(preset, btn);
+    bar.appendChild(btn);
+    if (preset.label === defaultLabel) setTimeout(() => apply(preset, btn), 0);
+  });
+  const hint = document.createElement('span');
+  hint.className = 'hint';
+  hint.textContent = '휠 확대 · 드래그 이동 · 더블클릭 초기화';
+  bar.appendChild(hint);
+
+  // 더블클릭으로 전체 범위 복귀
+  canvas.ondblclick = () => {
+    bar.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    delete chart.options.scales.x.min;
+    delete chart.options.scales.x.max;
+    if (chart.resetZoom) chart.resetZoom();
+    chart.update('none');
+  };
+  wrap.parentNode.insertBefore(bar, wrap);
+}
 // 자릿수가 큰 지표(M2, Fed 자산, 신규수주, 지수 종가 등)는 축 눈금과 툴팁에
 // 천단위 쉼표를 넣어야 자릿수를 바로 읽을 수 있다.
 const COMMA_TICKS = { callback: v => fmtComma(v, 0) };
@@ -1643,6 +1729,20 @@ safeChart('categoryTable', () => {
 });
 
 safeChart('releaseTable', buildReleaseTable);
+
+// 차트가 모두 만들어진 뒤 기간 버튼을 붙인다.
+// 일별(10년치)은 기본 1년, 월별은 전체로 시작한다.
+[
+  'ratesChart', 'walclChart', 'hySpreadChart', 'fxChart', 'wtiChart', 'soxChart',
+  'vixChart', 'mddChartKR', 'mddChartUS', 'kospiPriceChart', 'sp500PriceChart',
+  'kospiDispChart', 'sp500DispChart', 'flowKospiChart', 'flowKosdaqChart',
+].forEach(id => addRangeBar(id, RANGE_PRESETS_DAILY, '1년'));
+[
+  'cliChart', 'cliCountryMomChart', 'diffusionChart', 'exportChart', 'exportDailyChart',
+  'shareChart', 'amountChart', 'shareYoyChart', 'semiProxyChart', 'tenDayChart',
+  'm2Chart', 'indproChart', 'capexChart', 'fedSurveyChart', 'flowMonthlyChart',
+  'ktbChart', 'cpiChart', 'sentimentChart',
+].forEach(id => addRangeBar(id, RANGE_PRESETS_MONTHLY, '전체'));
 </script>
 
 </body>
