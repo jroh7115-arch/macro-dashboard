@@ -214,7 +214,7 @@
 
 <div class="chart-block">
   <h2>미국 지수 MDD(고점대비 낙폭, %): S&P500 / 나스닥 <span class="range" id="range-mddChartUS"></span></h2>
-  <p class="desc">조회 기간 중 S&P500·나스닥이 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 위 한국 지수 차트와 같은 시기를 비교하면, 국내 시장과 미국 시장 중 어느 쪽이 더 크게 흔들렸는지 가늠할 수 있습니다. (한국·미국을 같은 차트에 겹치면 변동성 크기 차이 때문에 비교가 어려워 차트를 분리했습니다.)</p>
+  <p class="desc">조회 기간 중 S&P500·나스닥이 그 시점까지의 최고가 대비 얼마나 빠졌는지를 보여줍니다. 위 한국 지수 차트와 같은 시기를 비교하면, 국내 시장과 미국 시장 중 어느 쪽이 더 크게 흔들렸는지 가늠할 수 있습니다. (한국·미국을 같은 차트에 겹치면 변동성 크기 차이 때문에 비교가 어려워 차트를 분리했습니다.) 사상 최고가를 새로 쓰는 구간에서는 MDD가 정확히 0이라 선이 0 기준선에 딱 붙어 평평하게 이어집니다 - 값이 없는 것이 아니라 낙폭이 0이라는 뜻입니다.</p>
   <div class="chart-wrap"><canvas id="mddChartUS"></canvas></div>
   <div class="missing" id="mddMissingNoteUS"></div>
   <div class="err" id="err-mddChartUS"></div>
@@ -240,6 +240,7 @@
 <div class="notes">
   <strong>데이터 출처 및 한계</strong><br>
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
+  - CLI 최신월이 현재 달보다 1~2개월 뒤처져 보이는 것은 정상입니다. OECD가 M월 지수를 M+1월 중순에 발표하기 때문으로, 이 저장소의 갱신 이력을 보면 2026년 6월 지수가 2026년 7월 17일에 처음 들어왔습니다. 13개국 모두 같은 시점에 갱신되며, 대시보드는 FRED가 제공하는 가장 최신값을 그대로 표시합니다.<br>
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
   - 관세청은 발표 후에도 잠정치를 확정치로 개정하기 때문에, 자동 갱신 때마다 최근 6개월치를 다시 받아 덮어씁니다. 이번 달과 전월 데이터는 아직 발표 전일 수 있고, 그런 달은 그래프에 나타나지 않습니다(보통 익월 중순에 확정).<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
