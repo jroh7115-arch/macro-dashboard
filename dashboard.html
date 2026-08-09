@@ -378,7 +378,12 @@ const expDailyYoy = expDailyVals.map((v,i) => {
 const basisSet = new Set(D.product_basis_months || []);
 const pMonthsRaw = D.product_months || [];
 const pMonths = basisSet.size ? pMonthsRaw.filter(ym => basisSet.has(ym)) : pMonthsRaw;
-const pMonthsDropped = pMonthsRaw.length - pMonths.length;
+// 속보 달은 품목 데이터가 아직 없는 게 정상이라 백필 대기로 세지 않는다.
+// 값이 실제로 있는데 옛 기준인 달만 "다시 받는 중"으로 안내한다.
+const pMonthsDropped = pMonthsRaw.filter(ym =>
+  !basisSet.has(ym) &&
+  (D.categories || []).some(c => (D.product_1000usd[c] || {})[ym] != null)
+).length;
 const cats = D.categories;
 const shareData = {};
 const catVals = {};
