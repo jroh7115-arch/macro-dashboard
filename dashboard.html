@@ -998,7 +998,18 @@ function buildMddChart(canvasId, missingNoteId, datasetsRaw) {
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { position: 'bottom' } },
         scales: {
-          y: { title: { display: true, text: 'MDD(%)' }, suggestedMax: 0, grid: { color: '#eee' } },
+          // MDD는 0보다 클 수 없어서 축 최댓값을 0으로 두면, 사상 최고가라 MDD가 정확히
+          // 0인 구간(S&P500은 최근 수백 거래일이 여기 해당)의 선이 차트 맨 위 테두리에
+          // 겹쳐 그려져 사실상 안 보인다. 0 위로 여백을 줘서 0선과 그 위의 선이 모두
+          // 차트 안쪽에 보이게 하고, 0선은 진하게 표시해 기준선임을 드러낸다.
+          y: {
+            title: { display: true, text: 'MDD(%)' },
+            max: 3,
+            grid: {
+              color: ctx => ctx.tick.value === 0 ? '#888' : '#eee',
+              lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
+            },
+          },
           x: { grid: { display: false } },
         }
       }
