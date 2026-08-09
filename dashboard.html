@@ -167,8 +167,8 @@
 </div>
 
 <div class="chart-block">
-  <h2>투자자별 순매수 (월별, 유가증권시장) <span class="range" id="range-flowMonthlyChart"></span></h2>
-  <p class="desc">월 단위로 본 기관·개인·외국인 순매수(억원)입니다. 위 일별 차트가 최근 1년여의 흐름을 본다면, 이 차트는 2015년까지 거슬러 올라가 장기 구도를 보여줍니다.</p>
+  <h2>투자자별 순매수 12개월 누적 (유가증권시장) <span class="range" id="range-flowMonthlyChart"></span></h2>
+  <p class="desc">각 시점에서 <strong>직전 12개월 동안</strong> 기관·개인·외국인이 순매수한 금액(억원)입니다. 월별 막대로 그리면 11년치가 한 화면에 414개나 들어가 읽을 수 없어서, 위 일별 차트와 같은 누적 방식으로 그렸습니다. 0선 위는 그 1년간 순매수, 아래는 순매도를 뜻합니다. 선이 0선을 가로지르는 시점이 수급 주도권이 바뀐 국면이고, 외국인 선이 깊게 내려간 구간이 대규모 이탈이 있었던 시기입니다.</p>
   <div class="chart-wrap"><canvas id="flowMonthlyChart"></canvas></div>
   <div class="missing" id="flowMonthlyMissingNote"></div>
   <div class="err" id="err-flowMonthlyChart"></div>
@@ -1270,30 +1270,41 @@ function drawFlowChart(canvasId, noteId, market) {
 drawFlowChart('flowKospiChart', 'flowKospiMissingNote', 'KOSPI');
 drawFlowChart('flowKosdaqChart', 'flowKosdaqMissingNote', 'KOSDAQ');
 
-// ---- 수급: 월별 투자자별 순매수 ----
+// ---- 수급: 월별 투자자별 12개월 누적 순매수 ----
+// 월별 막대로 그리면 11년치가 414개 막대(막대당 1.3px)라 읽을 수 없어서,
+// 일별 차트와 같은 누적 방식(직전 12개월 합계)으로 그린다.
 safeChart('flowMonthlyChart', () => {
   const defs = [
-    { key: 'FLOW_FGN_M', label: '외국인', color: 'rgba(47,85,151,0.75)' },
-    { key: 'FLOW_INST_M', label: '기관', color: 'rgba(123,31,162,0.75)' },
-    { key: 'FLOW_INDIV_M', label: '개인', color: 'rgba(216,67,21,0.75)' },
+    { key: 'FLOW_FGN_M', label: '외국인', color: '#2F5597' },
+    { key: 'FLOW_INST_M', label: '기관', color: '#7B1FA2' },
+    { key: 'FLOW_INDIV_M', label: '개인', color: '#D84315' },
   ].map(d => ({ ...d, s: bokSeries(d.key) }));
   if (!defs.some(d => d.s.months.length)) {
     document.getElementById('flowMonthlyMissingNote').textContent = '한국은행 ECOS 수급 데이터가 아직 수집되지 않았습니다.';
     return;
   }
   const all = Array.from(new Set(defs.flatMap(d => d.s.months))).sort();
-  setRange('flowMonthlyChart', monthLabel(all[0]), monthLabel(all[all.length-1]));
+  const series = defs.map(d => {
+    const m = {}; d.s.months.forEach((x, i) => { m[x] = d.s.vals[i]; });
+    const raw = all.map(x => (x in m ? m[x] : null));
+    return { ...d, data: rollSum(raw, 12) };
+  });
+  // 12개월 누적이 잡히는 첫 시점부터 그린다
+  const start = Math.min(...series.map(x => firstValidIdx(x.data)));
+  const labels = all.slice(start).map(monthLabel);
+  setRange('flowMonthlyChart', labels[0], labels[labels.length - 1]);
   new Chart(document.getElementById('flowMonthlyChart'), {
-    type: 'bar',
-    data: { labels: all.map(monthLabel), datasets: defs.map(d => {
-      const m = {}; d.s.months.forEach((x,i) => { m[x] = d.s.vals[i]; });
-      return { label: d.label, data: all.map(x => (x in m ? m[x] : null)), backgroundColor: d.color };
-    })},
+    type: 'line',
+    data: { labels, datasets: series.map(x => ({
+      label: x.label, data: x.data.slice(start), borderColor: x.color,
+      borderWidth: 2.5, fill: false, ...COMMON_LINE_OPTS,
+    }))},
     options: { responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: { tooltip: commaTooltip('억원') },
-      scales: { y: { title: { display: true, text: '순매수(억원)' }, ticks: COMMA_TICKS,
-        grid: { color: ctx => ctx.tick.value === 0 ? '#888' : '#eee', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } } } }
+      scales: { y: { title: { display: true, text: '12개월 누적 순매수(억원)' }, ticks: COMMA_TICKS,
+        grid: { color: ctx => ctx.tick.value === 0 ? '#888' : '#eee',
+                lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } } } }
   });
 });
 
