@@ -111,7 +111,8 @@
 
 <div class="chart-block">
   <h2>주요 품목별 수출 비중 추이 (관세청 HS코드 기준) <span class="range" id="range-shareChart"></span></h2>
-  <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.<br>마름모(◇)로 찍힌 마지막 점은 <strong>산업부 속보치</strong>로, 관세청 확정치가 나오기 전 값입니다(익월 15일경 확정치로 대체됨).<br><strong>품목별로 무엇이 들어가는지</strong> — 반도체(DRAM·낸드 등 집적회로, HS 8541/8542/8473), 자동차(승용차·화물차, 8703/8704), <strong>컴퓨터(SSD·메모리카드 등 저장매체, 8523)</strong>, 석유제품(경유·휘발유 등 정제유, 27류), 선박(여객선·화물선, 8901), 철강제품(열연·냉연·도금강판 등, 72류), 이차전지(리튬이온 배터리 등 축전지, 8507).</p>
+  <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.<br>마름모(◇)로 찍힌 마지막 점은 <strong>산업부 속보치</strong>로, 관세청 확정치가 나오기 전 값입니다(익월 15일경 확정치로 대체됨).</p>
+  <div id="categoryTable"></div>
   <div class="chart-wrap"><canvas id="shareChart"></canvas></div>
   <div class="missing" id="basisBackfillNote"></div>
   <div class="err" id="err-shareChart"></div>
@@ -156,6 +157,22 @@
   <div class="chart-wrap"><canvas id="cpiChart"></canvas></div>
   <div class="missing" id="cpiMissingNote"></div>
   <div class="err" id="err-cpiChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>외국인 순매수 (일별, 코스피 · 코스닥) <span class="range" id="range-flowDailyChart"></span></h2>
+  <p class="desc">외국인이 하루에 순매수(+)했는지 순매도(-)했는지를 억원 단위로 보여줍니다. 외국인 수급은 환율·글로벌 위험선호와 함께 움직이는 경우가 많아, 환율 차트와 같이 보면 자금 이탈이 원화 약세와 겹치는 국면인지 확인할 수 있습니다. 막대가 촘촘해 흐름을 읽기 어려우므로 20일 이동합계(약 한 달 누적)를 함께 그렸습니다. 일별로 공표되는 투자자는 외국인뿐이고, 기관·개인은 아래 월별 차트에서 볼 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="flowDailyChart"></canvas></div>
+  <div class="missing" id="flowDailyMissingNote"></div>
+  <div class="err" id="err-flowDailyChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>투자자별 순매수 (월별, 유가증권시장) <span class="range" id="range-flowMonthlyChart"></span></h2>
+  <p class="desc">기관·개인·외국인이 한 달 동안 유가증권시장에서 순매수한 금액(억원)입니다. 세 주체의 합은 대체로 0 근처가 되므로(한쪽이 사면 다른 쪽이 판다), 누가 사고 누가 파는지의 구도를 봅니다. 외국인이 팔고 개인이 받는 국면이 길어지면 지수 상승에 힘이 실리기 어렵고, 외국인과 기관이 같이 사는 국면은 수급이 우호적이라고 봅니다.</p>
+  <div class="chart-wrap"><canvas id="flowMonthlyChart"></canvas></div>
+  <div class="missing" id="flowMonthlyMissingNote"></div>
+  <div class="err" id="err-flowMonthlyChart"></div>
 </div>
 
 <div class="chart-block">
@@ -296,7 +313,7 @@
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
   - CLI 최신월이 현재 달보다 1~2개월 뒤처져 보이는 것은 정상입니다. OECD가 M월 지수를 대체로 M+1월 상순에 발표하고, FRED에 반영되기까지 다시 일주일쯤 걸리기 때문입니다(이 저장소 이력상 2026년 6월 지수는 7월 17일에 들어왔습니다). <strong>특히 OECD는 8월에는 발표를 쉬고 7월·8월 지수를 2026년 9월 7일에 함께 공표하므로, 8월 중에는 CLI가 6월에서 더 나아가지 않습니다.</strong> 대시보드는 FRED가 주는 가장 최신값을 그대로 표시하며, OECD 원본 API(sdmx.oecd.org)를 직접 조회해도 최신월이 동일한 것을 확인했습니다.<br>
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
-  - 한국 국고채 금리(721Y001), 소비자물가지수(901Y009), 제조업 업황실적BSI(512Y007), 경제심리지수 순환변동치(513Y001): 한국은행 ECOS(ecos.bok.or.kr). 미국 지표는 FRED, 한국 지표는 ECOS로 나뉘어 있어 발표 시점이 서로 다릅니다.<br>  - <strong>월중 조기 수출지표</strong>: 관세청_수출 주요품목별 10일 단위 잠정치 API(apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs). 매월 11일에 1~10일 누적, 21일에 1~20일 누적이 나옵니다. 이 API의 품목 구분은 관세청 자체 분류라 산업부 MTI와 달라(이차전지가 없고 철강 정의도 다름) 품목 차트에는 쓰지 않고 총액 기준 조기 지표로만 씁니다.<br>  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
+  - 투자자별 수급: 한국은행 ECOS. 일별 외국인 순매수는 802Y001(코스피 0030000, 코스닥 0113000), 월별 기관·개인·외국인은 901Y055입니다. 일별로 공표되는 투자자는 외국인뿐이고, 월별 표는 유가증권시장 기준 단일 계열입니다. 한국거래소가 투자자별 일별 데이터를 갖고 있지만 공식 OpenAPI에는 해당 서비스가 없고, 데이터포털 조회는 로그인을 요구해(pykrx도 계정 정보를 요구) 자동 수집에 쓰지 않았습니다.<br>  - 한국 국고채 금리(721Y001), 소비자물가지수(901Y009), 제조업 업황실적BSI(512Y007), 경제심리지수 순환변동치(513Y001): 한국은행 ECOS(ecos.bok.or.kr). 미국 지표는 FRED, 한국 지표는 ECOS로 나뉘어 있어 발표 시점이 서로 다릅니다.<br>  - <strong>월중 조기 수출지표</strong>: 관세청_수출 주요품목별 10일 단위 잠정치 API(apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs). 매월 11일에 1~10일 누적, 21일에 1~20일 누적이 나옵니다. 이 API의 품목 구분은 관세청 자체 분류라 산업부 MTI와 달라(이차전지가 없고 철강 정의도 다름) 품목 차트에는 쓰지 않고 총액 기준 조기 지표로만 씁니다.<br>  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
@@ -1171,6 +1188,74 @@ safeChart('cpiChart', () => {
   });
 });
 
+// ---- 수급: 일별 외국인 순매수 (코스피/코스닥) ----
+safeChart('flowDailyChart', () => {
+  const kp = bokSeries('FGN_KOSPI_D'), kq = bokSeries('FGN_KOSDAQ_D');
+  if (!kp.months.length && !kq.months.length) {
+    document.getElementById('flowDailyMissingNote').textContent = '한국은행 ECOS 수급 데이터가 아직 수집되지 않았습니다.';
+    return;
+  }
+  // ECOS 일별 TIME은 YYYYMMDD
+  const all = Array.from(new Set([...kp.months, ...kq.months])).sort();
+  const toIso = d => d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8);
+  const map = s => { const m = {}; s.months.forEach((d,i) => { m[d] = s.vals[i]; }); return m; };
+  const mk = map(kp), mq = map(kq);
+  const kpV = all.map(d => (d in mk ? mk[d] : null));
+  const kqV = all.map(d => (d in mq ? mq[d] : null));
+  // 20영업일 이동합계 - 하루치 막대만으로는 추세가 안 보인다
+  function rollSum(arr, n) {
+    return arr.map((_, i) => {
+      if (i < n - 1) return null;
+      const w = arr.slice(i - n + 1, i + 1).filter(v => v != null);
+      return w.length ? w.reduce((a, b) => a + b, 0) : null;
+    });
+  }
+  setRange('flowDailyChart', toIso(all[0]), toIso(all[all.length-1]));
+  new Chart(document.getElementById('flowDailyChart'), {
+    data: { labels: all.map(toIso), datasets: [
+      { type: 'bar', label: '코스피 일별(억원)', data: kpV, backgroundColor: 'rgba(47,85,151,0.35)', yAxisID: 'y', order: 3 },
+      { type: 'bar', label: '코스닥 일별(억원)', data: kqV, backgroundColor: 'rgba(216,67,21,0.35)', yAxisID: 'y', order: 4 },
+      { type: 'line', label: '코스피 20일 누적', data: rollSum(kpV, 20), borderColor: '#2F5597', borderWidth: 2.5, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+      { type: 'line', label: '코스닥 20일 누적', data: rollSum(kqV, 20), borderColor: '#D84315', borderWidth: 2, yAxisID: 'y1', order: 2, ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { tooltip: commaTooltip('억원') },
+      scales: {
+        y: { position: 'left', title: { display: true, text: '일별 순매수(억원)' }, ticks: COMMA_TICKS,
+             grid: { color: ctx => ctx.tick.value === 0 ? '#888' : '#eee', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } },
+        y1: { position: 'right', title: { display: true, text: '20일 누적(억원)' }, ticks: COMMA_TICKS, grid: { drawOnChartArea: false } },
+      } }
+  });
+});
+
+// ---- 수급: 월별 투자자별 순매수 ----
+safeChart('flowMonthlyChart', () => {
+  const defs = [
+    { key: 'FLOW_FGN_M', label: '외국인', color: 'rgba(47,85,151,0.75)' },
+    { key: 'FLOW_INST_M', label: '기관', color: 'rgba(123,31,162,0.75)' },
+    { key: 'FLOW_INDIV_M', label: '개인', color: 'rgba(216,67,21,0.75)' },
+  ].map(d => ({ ...d, s: bokSeries(d.key) }));
+  if (!defs.some(d => d.s.months.length)) {
+    document.getElementById('flowMonthlyMissingNote').textContent = '한국은행 ECOS 수급 데이터가 아직 수집되지 않았습니다.';
+    return;
+  }
+  const all = Array.from(new Set(defs.flatMap(d => d.s.months))).sort();
+  setRange('flowMonthlyChart', monthLabel(all[0]), monthLabel(all[all.length-1]));
+  new Chart(document.getElementById('flowMonthlyChart'), {
+    type: 'bar',
+    data: { labels: all.map(monthLabel), datasets: defs.map(d => {
+      const m = {}; d.s.months.forEach((x,i) => { m[x] = d.s.vals[i]; });
+      return { label: d.label, data: all.map(x => (x in m ? m[x] : null)), backgroundColor: d.color };
+    })},
+    options: { responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { tooltip: commaTooltip('억원') },
+      scales: { y: { title: { display: true, text: '순매수(억원)' }, ticks: COMMA_TICKS,
+        grid: { color: ctx => ctx.tick.value === 0 ? '#888' : '#eee', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } } } }
+  });
+});
+
 drawBokChart('sentimentChart', 'sentimentMissingNote', [
   { label: '제조업 업황BSI', data: bokSeries('BSI_MFG'), color: '#7B1FA2', width: 3 },
   { label: '경제심리지수(ESI)', data: bokSeries('ESI'), color: '#70AD47' },
@@ -1414,6 +1499,35 @@ if (pMonthsDropped > 0) {
   const el = document.getElementById('basisBackfillNote');
   if (el) el.textContent = `참고: 반도체 분류를 산업통상자원부 기준(HS 8541+8542+8473)으로 바꾸면서 과거 ${pMonthsDropped}개월을 관세청 API로 다시 받는 중입니다. 아직 못 받은 달은 옛 기준과 섞여 가짜 단차가 생기므로 품목 차트에서 제외했고, 자동 갱신이 진행되면 다시 길어집니다.`;
 }
+
+// 품목별로 무엇이 들어가는지 표로 보여준다 (차트 위에 두어 바로 확인 가능)
+const CATEGORY_INFO = {
+  '반도체':   ['DRAM·낸드 등 집적회로, 개별소자, 메모리모듈', 'HS 8541 · 8542 · 8473'],
+  '자동차':   ['승용차, 화물차', 'HS 8703 · 8704'],
+  '컴퓨터':   ['SSD·메모리카드 등 저장매체', 'HS 8523'],
+  '석유제품': ['경유·휘발유 등 정제유', 'HS 27류'],
+  '선박':     ['여객선, 화물선', 'HS 8901'],
+  '철강제품': ['열연·냉연·도금강판 등', 'HS 72류'],
+  '이차전지': ['리튬이온 배터리 등 축전지', 'HS 8507'],
+};
+safeChart('categoryTable', () => {
+  const el = document.getElementById('categoryTable');
+  if (!el) return;
+  const latest = pMonthsT.length ? pMonthsT[pMonthsT.length - 1] : null;
+  el.innerHTML = `
+    <table class="clitable">
+      <thead><tr><th>품목</th><th>포함되는 것</th><th>HS코드</th>
+        <th>${latest ? monthLabel(latest) + ' 비중' : '비중'}</th></tr></thead>
+      <tbody>${cats.map(c => {
+        const info = CATEGORY_INFO[c] || ['-', '-'];
+        const share = latest ? (shareDataT[c] || [])[pMonthsT.length - 1] : null;
+        return `<tr><td><strong>${c}</strong></td>
+          <td style="text-align:left">${info[0]}</td>
+          <td style="text-align:left;color:#888">${info[1]}</td>
+          <td>${share != null ? fmt(share, 2) + '%' : '-'}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+});
 
 safeChart('releaseTable', buildReleaseTable);
 </script>

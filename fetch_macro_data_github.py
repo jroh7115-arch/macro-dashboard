@@ -100,13 +100,23 @@ WORKDAY_BASIS = "official-sat-half-v1"
 # 한국은행 ECOS. 국내 금리·물가·경기심리는 FRED에 없어서 여기서 받는다.
 # (STAT_CODE, ITEM_CODE, 표시이름) - 전부 월 단위.
 BOK_API_KEY = os.environ.get("BOK_API_KEY", "")
-ECOS_URL = "https://ecos.bok.or.kr/api/StatisticSearch/{key}/json/kr/1/1000/{stat}/M/{s}/{e}/{items}"
+ECOS_URL = "https://ecos.bok.or.kr/api/StatisticSearch/{key}/json/kr/1/100000/{stat}/{cyc}/{s}/{e}/{items}"
+# (STAT_CODE, ITEM_CODE, 표시이름, 주기)
 ECOS_SERIES = {
-    "KTB10Y": ("721Y001", "5050000", "국고채 10년"),
-    "KTB3Y": ("721Y001", "5020000", "국고채 3년"),
-    "CPI": ("901Y009", "0", "소비자물가지수"),
-    "BSI_MFG": ("512Y007", "AA/C0000", "제조업 업황실적BSI"),
-    "ESI": ("513Y001", "E2000", "경제심리지수(순환변동치)"),
+    "KTB10Y": ("721Y001", "5050000", "국고채 10년", "M"),
+    "KTB3Y": ("721Y001", "5020000", "국고채 3년", "M"),
+    "CPI": ("901Y009", "0", "소비자물가지수", "M"),
+    "BSI_MFG": ("512Y007", "AA/C0000", "제조업 업황실적BSI", "M"),
+    "ESI": ("513Y001", "E2000", "경제심리지수(순환변동치)", "M"),
+    # 투자자별 수급(억원). KRX 공식 OpenAPI에는 투자자별 서비스가 없고 데이터포털은
+    # 로그인을 요구해서(pykrx도 KRX_ID/PW 필요) ECOS로 받는다.
+    # 일별은 외국인만 제공되고 KOSPI/KOSDAQ이 나뉘어 있다.
+    "FGN_KOSPI_D": ("802Y001", "0030000", "외국인 순매수(코스피, 일별)", "D"),
+    "FGN_KOSDAQ_D": ("802Y001", "0113000", "외국인 순매수(코스닥, 일별)", "D"),
+    # 기관·개인은 월별만 있고 유가증권시장 기준 단일 계열이다.
+    "FLOW_INST_M": ("901Y055", "S22CA", "기관 순매수(월별)", "M"),
+    "FLOW_INDIV_M": ("901Y055", "S22CB", "개인 순매수(월별)", "M"),
+    "FLOW_FGN_M": ("901Y055", "S22CC", "외국인 순매수(월별)", "M"),
 }
 
 # 한국거래소(KRX) 파생상품지수 일별시세. VKOSPI(코스피 200 변동성지수)는 야후
@@ -479,11 +489,14 @@ def fetch_bok_series():
         print("  BOK_API_KEY가 없어 한국 금리·물가·심리는 건너뜁니다.")
         return {}
     now = datetime.now()
-    start = f"{now.year - 11}01"      # CPI를 전년동월대비로 바꿀 여유분 포함 11년
-    end = f"{now.year:04d}{now.month:02d}"
     out = {}
-    for key, (stat, items, label) in ECOS_SERIES.items():
-        url = ECOS_URL.format(key=BOK_API_KEY, stat=stat, s=start, e=end, items=items)
+    for key, (stat, items, label, cyc) in ECOS_SERIES.items():
+        if cyc == "D":
+            start, end = f"{now.year - 10}0101", now.strftime("%Y%m%d")
+        else:
+            start = f"{now.year - 11}01"   # CPI를 전년동월대비로 바꿀 여유분 포함 11년
+            end = f"{now.year:04d}{now.month:02d}"
+        url = ECOS_URL.format(key=BOK_API_KEY, stat=stat, cyc=cyc, s=start, e=end, items=items)
         try:
             res = requests.get(url, timeout=60)
             res.raise_for_status()
