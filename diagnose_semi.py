@@ -20,7 +20,21 @@ COMBOS = {
 }
 
 def fetch(ym):
-    r = requests.get(URL, params={"serviceKey": KEY, "strtYymm": ym, "endYymm": ym, "hsSgn": ""}, timeout=180)
+    import time
+    last = None
+    for i in range(6):
+        url = URL if i % 2 == 0 else URL.replace("https://", "http://")
+        try:
+            r = requests.get(url, params={"serviceKey": KEY, "strtYymm": ym, "endYymm": ym, "hsSgn": ""},
+                             timeout=(15, 150))
+            r.raise_for_status()
+            break
+        except Exception as e:
+            last = e
+            print(f"  {ym} 시도 {i+1}/6 실패({type(e).__name__}) 재시도...")
+            time.sleep(10 * (i + 1))
+    else:
+        raise last
     root = ET.fromstring(r.text)
     by, tot = {}, None
     for it in root.findall(".//item"):
