@@ -124,6 +124,14 @@
   <div class="err" id="err-shareYoyChart"></div>
 </div>
 
+<div class="chart-block">
+  <h2>반도체 1일평균 수출액(EPS proxy) <span class="range" id="range-semiProxyChart"></span></h2>
+  <p class="desc">1일평균 수출액에 반도체 비중을 곱한 값으로, 조업일수 효과를 제거한 반도체 수출의 하루치 규모입니다. 반도체 이익 사이클을 총액보다 직접적으로 반영해 삼성전자·SK하이닉스 등 반도체 밸류체인의 이익 방향을 가늠하는 대용지표(proxy)로 쓰입니다. 꺾은선은 전년동월대비 증감률로, 레벨이 높게 유지되는지(고점 유지)와 더 가팔라지는지(재가속)를 구분해 보는 데 씁니다.</p>
+  <div class="chart-wrap"><canvas id="semiProxyChart"></canvas></div>
+  <div class="missing" id="semiProxyMissingNote"></div>
+  <div class="err" id="err-semiProxyChart"></div>
+</div>
+
 <h3>2. 미국 금리 · 유동성</h3>
 
 <div class="chart-block">
@@ -268,7 +276,7 @@
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
   - '13개국 평균'은 OECD가 공식 발표하는 G20 CLI 지수가 아니라, 이 대시보드가 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코·프랑스·이탈리아·스페인·인도네시아 13개국 CLI를 단순평균한 자체 계산값입니다. FRED가 제공하던 공식 OECD/G20 종합 CLI 시리즈는 2022년 11월 이후 갱신이 중단되어 이 대시보드에서는 쓸 수 없습니다.<br>
   - 조업일수는 평일에서 법정공휴일과 근로자의 날(5/1)을 빼고 토요일을 0.5일로 더해 계산합니다(관세청·산업부 기준). 산업부 '수출입 동향'이 발표한 일평균 수출액에서 역산한 조업일수와 2026년 3~7월 5개월이 모두 일치하는 것을 확인했습니다. 다만 임시공휴일은 holidays 패키지 반영 시점에 따라 누락될 수 있습니다.<br>
-  - 반도체는 산업통상자원부 '수출입 동향'과 비중을 맞추기 위해 HS 8541(개별소자)+8542(집적회로)+8473(메모리모듈 등 부분품)으로 집계합니다. 산업부 발표 비중과 2026-05(42.24% vs 42.3%), 2026-06(43.72% vs 43.8%) 두 달 모두 0.1%p 이내로 일치하는 것을 확인했습니다. 나머지 품목(자동차·이차전지·선박·철강판재류)은 대표 HS코드 하나씩만 쓰므로 산업부 기준보다 낮게 나올 수 있고, 특히 철강판재류는 7208(열연강판)만 반영해 크게 과소집계됩니다.<br>
+  - 품목 분류는 산업통상자원부 '수출입 동향'이 발표한 비중을 재현하도록 HS코드를 맞췄습니다(괄호는 2026-06 기준 이 대시보드 vs 산업부): 반도체 8541+8542+8473 (43.72% vs 43.8%), 자동차 8703+8704 (6.51% vs 6.6%), 컴퓨터 8523 (5.15% vs 4.8%), 석유제품 27류 (5.54% vs 5.5%), 선박 8901 (2.60% vs 2.8%), 철강제품 72류 (1.93% vs 2.1%), 이차전지 8507 (0.68% vs 0.7%).<br>  - 산업부가 함께 발표하는 '일반기계'와 '석유화학'은 넣지 않았습니다. MTI 분류가 HS 류와 깔끔히 대응하지 않아 가장 근접한 조합도 오차가 큽니다(일반기계는 84류에서 컴퓨터·부품을 뺀 값이 5.40%인데 발표치는 4.0%, 석유화학은 39류 3.22%·29+39류 4.89%인데 발표치는 4.0%). 억지로 맞추면 틀린 비중이 표시되므로 제외했습니다.<br>  - 품목 HS코드 대응은 2026-06 한 달로 맞춘 것이라(반도체만 2개월 검증), 7월 확정치가 나오면 다시 대조해 볼 필요가 있습니다.<br>
   - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함합니다. 각 품목에 쓰는 HS코드는 반도체 8542, 자동차 8703, 이차전지 8507, 선박 8901, 철강판재류 7208이며, 선박·철강판재류는 대표 코드 하나만 잡히므로 업계에서 쓰는 품목 통계보다 과소집계됩니다(예: 철강판재류는 냉연·도금강판 등이 빠짐).
 </div>
 
@@ -399,6 +407,18 @@ cats.forEach(cat => {
     return (val != null && total) ? val/total*100 : null;
   });
 });
+// 반도체 EPS proxy = 1일평균 수출액 x 반도체 비중.
+// 조업일수 효과를 뺀 반도체 수출의 하루치 규모로, 반도체 이익 사이클의 대용지표.
+const semiProxy = {};
+const expDailyByMonth = {};
+expMonths.forEach((ym, i) => { expDailyByMonth[ym] = expDailyVals[i]; });
+pMonths.forEach(ym => {
+  const daily = expDailyByMonth[ym];
+  const semiVal = rawUsdToThousand((D.product_1000usd['반도체'] || {})[ym]);
+  const total = D.export_total_1000usd[ym];
+  semiProxy[ym] = (daily != null && semiVal != null && total) ? daily * (semiVal / total) : null;
+});
+
 const catYoy = {};
 cats.forEach(cat => {
   catYoy[cat] = pMonths.map((ym,i) => {
@@ -693,6 +713,18 @@ const pMonthsYoyT = pMonthsT.slice(shareYoyStartIdx);
 const catYoyDisplayT = {};
 cats.forEach(cat => { catYoyDisplayT[cat] = catYoyT[cat].slice(shareYoyStartIdx); });
 
+// 반도체 proxy도 품목 차트와 같은 구간으로 자르고 YoY를 붙인다
+const semiProxyVals = pMonthsT.map(ym => semiProxy[ym]);
+const semiProxyYoy = semiProxyVals.map((v, i) => {
+  if (i < 12) return null;
+  const prev = semiProxyVals[i - 12];
+  return (prev != null && v != null) ? (v / prev - 1) * 100 : null;
+});
+const semiProxyStart = Math.min(firstValidIdx(semiProxyVals), Math.max(pMonthsT.length - 1, 0));
+const semiProxyMonthsT = pMonthsT.slice(semiProxyStart);
+const semiProxyValsT = semiProxyVals.slice(semiProxyStart);
+const semiProxyYoyT = semiProxyYoy.slice(semiProxyStart);
+
 // M2·산업생산·신규수주 YoY도 동일: 수집을 13개월 더 과거부터 하고, YoY가 없는 앞쪽은 잘라서 표시
 function trimToYoyStart(s, yoy) {
   const start = Math.min(firstValidIdx(yoy), Math.max(s.dates.length - 1, 0));
@@ -710,6 +742,8 @@ setRange('exportChart', monthLabel(expMonthsT[0]), monthLabel(expMonthsT[expMont
 setRange('exportDailyChart', monthLabel(expMonthsDailyT[0]), monthLabel(expMonthsDailyT[expMonthsDailyT.length-1]));
 setRange('shareChart', monthLabel(pMonthsT[0]), monthLabel(pMonthsT[pMonthsT.length-1]));
 setRange('shareYoyChart', pMonthsYoyT.length ? monthLabel(pMonthsYoyT[0]) : null, pMonthsYoyT.length ? monthLabel(pMonthsYoyT[pMonthsYoyT.length-1]) : null);
+setRange('semiProxyChart', semiProxyMonthsT.length ? monthLabel(semiProxyMonthsT[0]) : null,
+  semiProxyMonthsT.length ? monthLabel(semiProxyMonthsT[semiProxyMonthsT.length-1]) : null);
 setRange('ratesChart', dgs10.dates[0], dgs10.dates[dgs10.dates.length-1]);
 setRange('m2Chart', ymLabel(m2T.dates[0]), ymLabel(m2T.dates[m2T.dates.length-1]));
 setRange('indproChart', ymLabel(indproT.dates[0]), ymLabel(indproT.dates[indproT.dates.length-1]));
@@ -899,6 +933,31 @@ safeChart('exportDailyChart', () => new Chart(document.getElementById('exportDai
   ]},
   options: exportChartOptions('1일평균 수출액(억$)')
 }));
+
+safeChart('semiProxyChart', () => {
+  if (!semiProxyValsT.some(v => v != null)) {
+    document.getElementById('semiProxyMissingNote').textContent = '반도체 비중을 계산할 품목 데이터가 아직 없습니다.';
+    return;
+  }
+  new Chart(document.getElementById('semiProxyChart'), {
+    data: { labels: semiProxyMonthsT.map(monthLabel), datasets: [
+      { type: 'bar', label: '반도체 1일평균 수출액(억달러)', data: semiProxyValsT,
+        backgroundColor: barColors(semiProxyMonthsT, 'rgba(123,31,162,0.5)', 'rgba(123,31,162,0.2)'),
+        borderColor: barColors(semiProxyMonthsT, 'rgba(123,31,162,0.9)', 'rgba(123,31,162,0.5)'),
+        borderWidth: 1, yAxisID: 'y', order: 2 },
+      { type: 'line', label: 'YoY(%)', data: semiProxyYoyT, borderColor: EXPORT_YOY_COLOR,
+        backgroundColor: EXPORT_YOY_COLOR, borderWidth: 3.5, pointHoverRadius: 4,
+        yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { usePointStyle: true } } },
+      scales: {
+        y: { position: 'left', title: { display: true, text: '반도체 1일평균(억$)', color: '#7B1FA2' }, ticks: { color: '#7B1FA2' } },
+        y1: { position: 'right', title: { display: true, text: 'YoY(%)', color: EXPORT_YOY_COLOR }, ticks: { color: EXPORT_YOY_COLOR }, grid: { drawOnChartArea: false } },
+      }}
+  });
+});
 
 safeChart('shareChart', () => new Chart(document.getElementById('shareChart'), {
   type: 'line',
