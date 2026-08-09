@@ -268,7 +268,15 @@
 const D = window.MACRO_DATA;
 
 function fmt(n, d=2) { return (n === null || n === undefined || isNaN(n)) ? '-' : n.toFixed(d); }
+// 천단위 구분 쉼표를 넣은 숫자 (23155 -> 23,155)
+function fmtComma(n, d=0) {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  return n.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
 function monthLabel(ym) { return ym.slice(0,4) + '-' + ym.slice(4,6); }
+// FRED의 월별 시리즈는 날짜가 그 달 1일("2026-06-01")로 오는데, 월 단위 지표를
+// 일 단위처럼 보여주면 오해를 주므로 축 라벨을 "2026-06"으로 줄인다.
+function ymLabel(dateStr) { return (dateStr || '').slice(0, 7); }
 function robustAxisRange(valueArrays, padRatio = 0.25) {
   // Tukey fence 방식: 코로나처럼 짧고 극단적인 튐은 제외하고, 평상시 변동폭이 잘 보이도록 축 범위를 계산.
   const all = [];
@@ -474,12 +482,14 @@ const latestSP500MDD = mddSP500.vals[sp500MddIdx];
 
 const cards = [
   {label: `한국 CLI (${monthLabel(months[latestIdx])})`, value: fmt(latestKor,2), sub: (latestKorMom>=0?'▲ +':'▼ ') + fmt(Math.abs(latestKorMom),3), cls: latestKorMom>=0?'up':'down'},
-  {label: `수출총액 (${monthLabel(expMonths[latestExpIdx])})`, value: fmt(latestExp,1)+'억$', sub: (latestExpYoy>=0?'▲ YoY +':'▼ YoY ')+fmt(Math.abs(latestExpYoy),1)+'%', cls: latestExpYoy>=0?'up':'down'},
+  {label: `수출총액 (${monthLabel(expMonths[latestExpIdx])})`, value: fmtComma(latestExp,1)+'억$', sub: (latestExpYoy>=0?'▲ YoY +':'▼ YoY ')+fmt(Math.abs(latestExpYoy),1)+'%', cls: latestExpYoy>=0?'up':'down'},
   {label: `반도체 비중 (${monthLabel(pMonths[latestShareIdx])})`, value: fmt(semiShare,1)+'%', sub: '', cls: ''},
   {label: '미국 10Y-2Y 금리차', value: fmt(latestSpread,2)+'%p', sub: latestSpread<0?'역전 상태':'정상 형태', cls: latestSpread<0?'down':'up'},
   {label: 'VIX', value: fmt(latestVix,1), sub: latestVix>25?'경계 구간':(latestVix<15?'안정 구간':'보통'), cls: latestVix>25?'down':'up'},
-  {label: 'S&P500 MDD', value: fmt(latestSP500MDD,1)+'%', sub: '조회기간 내 롤링 낙폭', cls: latestSP500MDD < -5 ? 'down':'up'},
-  {label: '미국 M2 YoY', value: fmt(latestM2Yoy,1)+'%', sub: fmt(latestM2,0)+'십억$', cls: latestM2Yoy>=0?'up':'down'},
+  // MDD가 0이면 값이 없는 게 아니라 그 시점이 조회기간 내 최고가라는 뜻이라, 오해가
+  // 없도록 문구를 따로 준다.
+  {label: 'S&P500 MDD', value: fmt(latestSP500MDD,1)+'%', sub: latestSP500MDD >= -0.05 ? '조회기간 내 최고가 경신' : '조회기간 내 롤링 낙폭', cls: latestSP500MDD < -5 ? 'down':'up'},
+  {label: '미국 M2 YoY', value: fmt(latestM2Yoy,1)+'%', sub: fmtComma(latestM2,0)+'십억$', cls: latestM2Yoy>=0?'up':'down'},
 ];
 document.getElementById('cards').innerHTML = cards.map(c => `
   <div class="card">
@@ -623,12 +633,12 @@ setRange('exportDailyChart', monthLabel(expMonthsDailyT[0]), monthLabel(expMonth
 setRange('shareChart', monthLabel(pMonthsT[0]), monthLabel(pMonthsT[pMonthsT.length-1]));
 setRange('shareYoyChart', pMonthsYoyT.length ? monthLabel(pMonthsYoyT[0]) : null, pMonthsYoyT.length ? monthLabel(pMonthsYoyT[pMonthsYoyT.length-1]) : null);
 setRange('ratesChart', dgs10.dates[0], dgs10.dates[dgs10.dates.length-1]);
-setRange('m2Chart', m2T.dates[0], m2T.dates[m2T.dates.length-1]);
-setRange('indproChart', indproT.dates[0], indproT.dates[indproT.dates.length-1]);
-setRange('capexChart', neworderT.dates[0], neworderT.dates[neworderT.dates.length-1]);
+setRange('m2Chart', ymLabel(m2T.dates[0]), ymLabel(m2T.dates[m2T.dates.length-1]));
+setRange('indproChart', ymLabel(indproT.dates[0]), ymLabel(indproT.dates[indproT.dates.length-1]));
+setRange('capexChart', ymLabel(neworderT.dates[0]), ymLabel(neworderT.dates[neworderT.dates.length-1]));
 {
   const fedAll = Array.from(new Set([...phillyFed.dates, ...empireFed.dates])).sort();
-  setRange('fedSurveyChart', fedAll[0], fedAll[fedAll.length-1]);
+  setRange('fedSurveyChart', ymLabel(fedAll[0]), ymLabel(fedAll[fedAll.length-1]));
 }
 setRange('walclChart', walcl.dates[0], walcl.dates[walcl.dates.length-1]);
 setRange('hySpreadChart', hySpread.dates[0], hySpread.dates[hySpread.dates.length-1]);
@@ -705,6 +715,12 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 const COMMON_LINE_OPTS = { tension: 0.15, pointRadius: 0, spanGaps: true };
+// 자릿수가 큰 지표(M2, Fed 자산, 신규수주, 지수 종가 등)는 축 눈금과 툴팁에
+// 천단위 쉼표를 넣어야 자릿수를 바로 읽을 수 있다.
+const COMMA_TICKS = { callback: v => fmtComma(v, 0) };
+function commaTooltip(unit = '') {
+  return { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtComma(ctx.parsed.y, ctx.parsed.y % 1 ? 2 : 0)}${unit}` } };
+}
 
 safeChart('cliChart', () => {
   const levelRange = robustAxisRange([korArrT, avgArrT], 0.2);
@@ -815,12 +831,14 @@ safeChart('ratesChart', () => new Chart(document.getElementById('ratesChart'), {
 }));
 
 safeChart('m2Chart', () => new Chart(document.getElementById('m2Chart'), {
-  data: { labels: m2T.dates, datasets: [
+  data: { labels: m2T.dates.map(ymLabel), datasets: [
     { type: 'line', label: 'M2(십억달러)', data: m2T.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
     { type: 'line', label: 'M2 YoY(%)', data: m2T.yoy, borderColor: '#ED7D31', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
   ]},
-  options: { responsive: true, maintainAspectRatio: false, scales: {
-    y: { position: 'left', title: { display: true, text: 'M2(십억$)' } },
+  options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { tooltip: commaTooltip() },
+    scales: {
+    y: { position: 'left', title: { display: true, text: 'M2(십억$)' }, ticks: COMMA_TICKS },
     y1: { position: 'right', title: { display: true, text: 'YoY(%)' }, grid: { drawOnChartArea: false } },
   }}
 }));
@@ -830,7 +848,9 @@ safeChart('walclChart', () => new Chart(document.getElementById('walclChart'), {
   data: { labels: walcl.dates, datasets: [
     { label: 'Fed 총자산(백만달러)', data: walcl.vals, borderColor: '#264478', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', ...COMMON_LINE_OPTS },
   ]},
-  options: { responsive: true, maintainAspectRatio: false }
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { tooltip: commaTooltip() },
+    scales: { y: { ticks: COMMA_TICKS } } }
 }));
 
 safeChart('hySpreadChart', () => new Chart(document.getElementById('hySpreadChart'), {
@@ -855,7 +875,7 @@ safeChart('fedSurveyChart', () => {
   const emMap = {}; empireFed.dates.forEach((d,i) => emMap[d] = empireFed.vals[i]);
   new Chart(document.getElementById('fedSurveyChart'), {
     type: 'line',
-    data: { labels: allDates, datasets: [
+    data: { labels: allDates.map(ymLabel), datasets: [
       { label: '필라델피아 연준', data: allDates.map(d => phMap[d] !== undefined ? phMap[d] : null), borderColor: '#264478', borderWidth: 2.5, ...COMMON_LINE_OPTS },
       { label: '뉴욕 연준(엠파이어)', data: allDates.map(d => emMap[d] !== undefined ? emMap[d] : null), borderColor: '#ED7D31', borderWidth: 2, ...COMMON_LINE_OPTS },
     ]},
@@ -871,7 +891,7 @@ safeChart('indproChart', () => {
     return;
   }
   new Chart(document.getElementById('indproChart'), {
-    data: { labels: indproT.dates, datasets: [
+    data: { labels: indproT.dates.map(ymLabel), datasets: [
       { type: 'line', label: '산업생산지수', data: indproT.vals, borderColor: palette[0], yAxisID: 'y', fill: true, backgroundColor: 'rgba(68,114,196,0.08)', order: 2, ...COMMON_LINE_OPTS },
       { type: 'line', label: 'YoY(%)', data: indproT.yoy, borderColor: '#D84315', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
     ]},
@@ -888,12 +908,14 @@ safeChart('capexChart', () => {
     return;
   }
   new Chart(document.getElementById('capexChart'), {
-    data: { labels: neworderT.dates, datasets: [
+    data: { labels: neworderT.dates.map(ymLabel), datasets: [
       { type: 'line', label: '신규수주(백만달러)', data: neworderT.vals, borderColor: '#264478', yAxisID: 'y', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', order: 2, ...COMMON_LINE_OPTS },
       { type: 'line', label: 'YoY(%)', data: neworderT.yoy, borderColor: '#D84315', borderWidth: 3, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
     ]},
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
-      y: { position: 'left', title: { display: true, text: '신규수주(백만$)' } },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { tooltip: commaTooltip() },
+      scales: {
+      y: { position: 'left', title: { display: true, text: '신규수주(백만$)' }, ticks: COMMA_TICKS },
       y1: { position: 'right', title: { display: true, text: 'YoY(%)', color: '#D84315' }, ticks: { color: '#D84315' }, grid: { drawOnChartArea: false } },
     }}
   });
@@ -914,7 +936,7 @@ safeChart('fxChart', () => {
       { label: '달러인덱스(Broad)', data: allDates.map(d => dxyMap[d] !== undefined ? dxyMap[d] : null), borderColor: '#D84315', borderWidth: 2, borderDash: [5,3], yAxisID: 'y1', ...COMMON_LINE_OPTS },
     ]},
     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
-      y: { position: 'left', title: { display: true, text: '원/달러(원)', color: '#2F5597' }, ticks: { color: '#2F5597' } },
+      y: { position: 'left', title: { display: true, text: '원/달러(원)', color: '#2F5597' }, ticks: { color: '#2F5597', callback: v => fmtComma(v, 0) } },
       y1: { position: 'right', title: { display: true, text: '달러인덱스', color: '#D84315' }, ticks: { color: '#D84315' }, grid: { drawOnChartArea: false } },
     }}
   });
@@ -944,7 +966,7 @@ safeChart('soxChart', () => {
     data: { labels: soxPrice.dates, datasets: [
       { label: 'SOX 종가', data: soxPrice.vals, borderColor: '#7B1FA2', fill: true, backgroundColor: 'rgba(123,31,162,0.08)', ...COMMON_LINE_OPTS },
     ]},
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '지수' } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: commaTooltip() }, scales: { y: { title: { display: true, text: '지수' }, ticks: COMMA_TICKS } } }
   });
 });
 
@@ -1054,9 +1076,9 @@ function buildPriceChart(canvasId, missingNoteId, label, series, color) {
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false } },
+        plugins: { legend: { display: false }, tooltip: commaTooltip() },
         scales: {
-          y: { title: { display: true, text: '종가' }, grid: { color: '#eee' } },
+          y: { title: { display: true, text: '종가' }, grid: { color: '#eee' }, ticks: COMMA_TICKS },
           x: { grid: { display: false } },
         }
       }
