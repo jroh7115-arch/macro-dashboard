@@ -125,6 +125,14 @@
 </div>
 
 <div class="chart-block">
+  <h2>월중 조기 수출지표: 1~10일 · 1~20일 누적 수출 YoY <span class="range" id="range-tenDayChart"></span></h2>
+  <p class="desc">관세청은 매월 11일에 1~10일 누적, 21일에 1~20일 누적 수출액을 잠정치로 발표합니다. 월간 수출이 확정되기 훨씬 전에 그 달의 방향을 볼 수 있는 지표로, 각 구간을 <strong>전년 같은 구간과 비교한 증감률</strong>입니다. 세 선이 비슷하게 움직이면 월중 흐름이 일정하다는 뜻이고, 1~10일과 1~20일이 월 전체보다 먼저 꺾이면 월 후반 둔화를 미리 시사합니다. 조업일수 차이가 보정되지 않아 구간별로 편차가 있을 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="tenDayChart"></canvas></div>
+  <div class="missing" id="tenDayMissingNote"></div>
+  <div class="err" id="err-tenDayChart"></div>
+</div>
+
+<div class="chart-block">
   <h2>반도체 1일평균 수출액(EPS proxy) <span class="range" id="range-semiProxyChart"></span></h2>
   <p class="desc">1일평균 수출액에 반도체 비중을 곱한 값으로, 조업일수 효과를 제거한 반도체 수출의 하루치 규모입니다. 반도체 이익 사이클을 총액보다 직접적으로 반영해 삼성전자·SK하이닉스 등 반도체 밸류체인의 이익 방향을 가늠하는 대용지표(proxy)로 쓰입니다. 꺾은선은 전년동월대비 증감률로, 레벨이 높게 유지되는지(고점 유지)와 더 가팔라지는지(재가속)를 구분해 보는 데 씁니다.</p>
   <div class="chart-wrap"><canvas id="semiProxyChart"></canvas></div>
@@ -262,7 +270,7 @@
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
   - CLI 최신월이 현재 달보다 1~2개월 뒤처져 보이는 것은 정상입니다. OECD가 M월 지수를 대체로 M+1월 상순에 발표하고, FRED에 반영되기까지 다시 일주일쯤 걸리기 때문입니다(이 저장소 이력상 2026년 6월 지수는 7월 17일에 들어왔습니다). <strong>특히 OECD는 8월에는 발표를 쉬고 7월·8월 지수를 2026년 9월 7일에 함께 공표하므로, 8월 중에는 CLI가 6월에서 더 나아가지 않습니다.</strong> 대시보드는 FRED가 주는 가장 최신값을 그대로 표시하며, OECD 원본 API(sdmx.oecd.org)를 직접 조회해도 최신월이 동일한 것을 확인했습니다.<br>
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
-  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
+  - <strong>월중 조기 수출지표</strong>: 관세청_수출 주요품목별 10일 단위 잠정치 API(apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs). 매월 11일에 1~10일 누적, 21일에 1~20일 누적이 나옵니다. 이 API의 품목 구분은 관세청 자체 분류라 산업부 MTI와 달라(이차전지가 없고 철강 정의도 다름) 품목 차트에는 쓰지 않고 총액 기준 조기 지표로만 씁니다.<br>  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
@@ -933,6 +941,52 @@ safeChart('exportDailyChart', () => new Chart(document.getElementById('exportDai
   ]},
   options: exportChartOptions('1일평균 수출액(억$)')
 }));
+
+// ================= 월중 조기 수출지표 (10일 단위 잠정치) =================
+const tenDay = D.export_10day || {};
+const tenDayMonths = Object.keys(tenDay).sort();
+const TENDAY_KEYS = [
+  { key: '01~10', label: '1~10일 누적 YoY', color: '#2F5597' },
+  { key: '01~20', label: '1~20일 누적 YoY', color: '#7B1FA2' },
+  { key: '월전체', label: '월 전체 YoY', color: '#D84315' },
+];
+function tenDayYoy(key) {
+  return tenDayMonths.map(ym => {
+    const cur = (tenDay[ym] || {})[key];
+    // 전년 동월의 같은 구간과 비교
+    const prevYm = String(Number(ym) - 100);
+    const prev = (tenDay[prevYm] || {})[key];
+    if (!cur || !prev || !cur['전체'] || !prev['전체']) return null;
+    return (cur['전체'] / prev['전체'] - 1) * 100;
+  });
+}
+
+safeChart('tenDayChart', () => {
+  if (!tenDayMonths.length) {
+    document.getElementById('tenDayMissingNote').textContent =
+      '10일 단위 잠정치가 아직 수집되지 않았습니다.';
+    return;
+  }
+  const series = TENDAY_KEYS.map(k => ({ ...k, data: tenDayYoy(k.key) }));
+  // YoY가 하나라도 있는 첫 달부터 그린다
+  const start = Math.min(...series.map(s => firstValidIdx(s.data)));
+  const labels = tenDayMonths.slice(start).map(monthLabel);
+  setRange('tenDayChart', labels[0], labels[labels.length - 1]);
+  new Chart(document.getElementById('tenDayChart'), {
+    type: 'line',
+    data: { labels, datasets: series.map(s => ({
+      label: s.label, data: s.data.slice(start), borderColor: s.color,
+      borderWidth: s.key === '월전체' ? 3 : 2,
+      borderDash: s.key === '01~10' ? [5, 3] : undefined,
+      ...COMMON_LINE_OPTS,
+    }))},
+    options: { responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: { y: { title: { display: true, text: '전년 동기간 대비(%)' },
+        grid: { color: ctx => ctx.tick.value === 0 ? '#888' : '#eee',
+                lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 } } } }
+  });
+});
 
 safeChart('semiProxyChart', () => {
   if (!semiProxyValsT.some(v => v != null)) {

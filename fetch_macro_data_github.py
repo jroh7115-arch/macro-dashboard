@@ -388,6 +388,74 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
 CUSTOMS_TOTAL_URL = "https://apis.data.go.kr/1220000/Newtrade/getNewtradeList"
 
 
+# 관세청 '수출 주요품목별 10일 단위 잠정치'. 월간 확정치보다 훨씬 빨라서
+# 11일(1~10일 누적), 21일(1~20일 누적), 익월 1일(월 전체)에 차례로 나온다.
+# 품목 구분은 관세청 자체 분류라 산업부 MTI와 다르다(이차전지가 없고 철강 정의도
+# 다름). 그래서 월간 품목 차트를 대체하지는 않고, 월중 조기 지표로만 쓴다.
+CUSTOMS_10DAY_URL = (
+    "https://apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs/getPrlstMmUtPrviExpAcrs"
+)
+TENDAY_FIELDS = {
+    "itemUsdAmt00": "전체",
+    "itemUsdAmt01": "반도체",
+    "itemUsdAmt02": "철강제품",
+    "itemUsdAmt03": "승용차",
+    "itemUsdAmt04": "석유제품",
+    "itemUsdAmt05": "무선통신기기",
+    "itemUsdAmt06": "선박",
+    "itemUsdAmt07": "자동차부품",
+    "itemUsdAmt08": "컴퓨터주변기기",
+    "itemUsdAmt09": "정밀기기",
+    "itemUsdAmt10": "가전제품",
+}
+
+
+def fetch_customs_10day(start_year: int, end_year: int):
+    """10일 단위 누적 수출액을 {월: {기간: {품목: 천달러}}} 형태로 받아온다.
+
+    이 API는 한 번에 조회할 수 있는 기간이 제한돼 있어(10년 초과 시 오류) 연 단위로
+    나눠 호출한다.
+    """
+    if not CUSTOMS_SERVICE_KEY:
+        return {}
+    items = []
+    for year in range(start_year, end_year + 1):
+        try:
+            res = requests.get(
+                CUSTOMS_10DAY_URL,
+                params={"serviceKey": CUSTOMS_SERVICE_KEY,
+                        "strtYymm": f"{year}01", "endYymm": f"{year}12"},
+                timeout=(10, 120),
+            )
+            res.raise_for_status()
+            root = ET.fromstring(res.text)
+            if root.findtext(".//resultCode") not in (None, "00"):
+                print(f"  10일 단위 {year}년 오류: {root.findtext('.//resultMsg')}")
+                continue
+            items.extend(root.findall(".//item"))
+        except Exception as e:
+            print(f"  10일 단위 {year}년 수집 실패({type(e).__name__})")
+        time.sleep(0.3)
+
+    out = {}
+    for item in items:
+        ym = item.findtext("priodMon")
+        period = (item.findtext("priodDt") or "").strip()
+        if not ym or not period:
+            continue
+        vals = {}
+        for field, name in TENDAY_FIELDS.items():
+            raw = (item.findtext(field) or "").replace(",", "").strip()
+            try:
+                vals[name] = float(raw)
+            except ValueError:
+                continue
+        # 말일까지 누적은 달마다 '01~28'~'01~31'로 달라져 비교가 어려우니 통일한다
+        key = period if period in ("01~10", "01~20") else "월전체"
+        out.setdefault(ym, {})[key] = vals
+    return out
+
+
 def fetch_customs_total(yymm: str):
     """수출입총괄 API에서 그 달 총수출액(달러)을 받아온다. 없으면 None."""
     last_err = None
@@ -668,6 +736,18 @@ def update_export_data(existing):
     if prelim:
         print(f"  속보치로 채운 달: {sorted(prelim)}")
 
+    # 10일 단위 잠정치: 월간 확정치보다 빨라 월중 흐름을 미리 볼 수 있다.
+    # 응답이 작아 매번 10년치를 통째로 다시 받아도 부담이 없다.
+    ten_day = dict(existing.get("export_10day", {}))
+    if CUSTOMS_SERVICE_KEY:
+        now2 = datetime.now()
+        got10 = fetch_customs_10day(now2.year - 10, now2.year)
+        if got10:
+            ten_day.update(got10)
+            latest10 = max(ten_day)
+            print(f"  10일 단위 잠정치 {len(ten_day)}개월 (최신 {latest10}: "
+                  f"{', '.join(sorted(ten_day[latest10]))})")
+
     remaining = [ym for ym in total_1000 if ym not in basis_ok]
     if remaining:
         print(f"  아직 이전 품목 분류 기준인 달: {len(remaining)}개월 "
@@ -682,6 +762,7 @@ def update_export_data(existing):
         "export_workday_basis": WORKDAY_BASIS,
         # 속보치로만 채워진 달 (확정치가 들어오면 목록에서 빠진다)
         "export_preliminary": {k: True for k in sorted(prelim)},
+        "export_10day": ten_day,
         "product_basis": CATEGORY_BASIS,
         "product_basis_months": sorted(basis_ok),
         "categories": DEFAULT_CATEGORIES,
