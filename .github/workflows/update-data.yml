@@ -30,7 +30,7 @@ jobs:
         # holidays는 버전에 따라 한국 공휴일 판정이 달라진다(예: 0.101+는 근로자의 날을
         # 추가해 2026-05 조업일수가 19일에서 18일로 바뀜). 기존 1일평균 수출액 시리즈
         # 전체가 0.100 기준으로 계산돼 있어, 버전을 고정해야 단차가 생기지 않는다.
-        run: pip install requests yfinance pandas 'holidays==0.100'
+        run: pip install requests yfinance pandas pdfplumber 'holidays==0.100'
 
       - name: Run data fetch script (FRED + yfinance + customs export data)
         env:

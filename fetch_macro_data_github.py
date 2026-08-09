@@ -24,6 +24,7 @@ API 모두 해외 IP에서 정상 응답했습니다(HTTP 200, resultCode 00). �
 """
 
 import calendar
+import io
 import json
 import os
 import re
@@ -435,6 +436,61 @@ def _kdi_text(url):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)), re.sub(r"\s+", " ", res.text)
 
 
+# 산업부 보도자료 표의 품목명 -> 이 대시보드의 품목명
+MOTIE_ITEM_MAP = {
+    "반도체": "반도체", "자동차": "자동차", "컴퓨터": "컴퓨터",
+    "석유제품": "석유제품", "선박": "선박", "철강": "철강제품", "이차전지": "이차전지",
+}
+KDI_DOWNLOAD = "https://eiec.kdi.re.kr/policy/callDownload.do?num={num}&filenum=1"
+_ITEM_NAME_RE = re.compile(r"^[가-힣·A-Za-z()\s]+$")
+_ITEM_VAL_RE = re.compile(r"^(?:[\d,]+\s*\([+\-−△▲]?[\d.]+\)\s*)+$")
+
+
+def fetch_preliminary_products(num: str):
+    """보도자료 PDF의 '20대 주요품목별 수출액' 표에서 품목별 수출액(달러)을 뽑는다.
+
+    산업부 홈페이지는 첨부 다운로드가 막혀 있지만 KDI는 같은 PDF를 내려준다.
+    표는 '품목명들 한 줄 / 값들 한 줄'이 반복되는 구조이고, 값은 억달러 정수와
+    증감률이 '410 (+179)' 형태로 붙어 있다(감소는 △로 표기).
+    """
+    try:
+        import pdfplumber
+    except ImportError:
+        print("    pdfplumber가 없어 품목별 속보는 건너뜁니다.")
+        return {}
+    try:
+        res = requests.get(KDI_DOWNLOAD.format(num=num), timeout=180, headers=KDI_UA)
+        res.raise_for_status()
+        if res.content[:4] != b"%PDF":
+            print("    KDI 첨부가 PDF가 아닙니다. 품목별 속보를 건너뜁니다.")
+            return {}
+        with pdfplumber.open(io.BytesIO(res.content)) as pdf:
+            text = "\n".join((pg.extract_text() or "") for pg in pdf.pages[:4])
+    except Exception as e:
+        print(f"    보도자료 PDF 처리 실패({type(e).__name__}) - 품목별 속보 건너뜀")
+        return {}
+
+    m = re.search(r"20대\s*주요품목별\s*수출액\(억달러\)\s*및\s*증감률\(%\)\s*】(.{0,1200})", text, re.S)
+    if not m:
+        print("    보도자료에서 품목별 표를 찾지 못했습니다(양식 변경 가능성).")
+        return {}
+    lines = [l.strip() for l in m.group(1).split("\n") if l.strip()]
+    raw = {}
+    for i in range(len(lines) - 1):
+        if _ITEM_NAME_RE.match(lines[i]) and _ITEM_VAL_RE.match(lines[i + 1]):
+            names = lines[i].split()
+            vals = re.findall(r"([\d,]+)\s*\(([+\-−△▲]?)([\d.]+)\)", lines[i + 1])
+            if len(names) == len(vals):
+                for name, (amount, _sign, _rate) in zip(names, vals):
+                    raw[name] = float(amount.replace(",", "")) * 1e8   # 억달러 -> 달러
+
+    out = {cat: raw[src] for src, cat in MOTIE_ITEM_MAP.items() if src in raw}
+    if out:
+        print(f"    품목별 속보 {len(out)}개 확보 "
+              f"(반도체 {out.get('반도체', 0)/1e8:,.0f}억달러)")
+    return out
+
+
 def fetch_preliminary_export(yymm: str):
     """산업부 수출입 동향 속보에서 (총수출 달러, YoY %)를 읽어온다. 없으면 None."""
     year, month = int(yymm[:4]), int(yymm[4:])
@@ -456,6 +512,7 @@ def fetch_preliminary_export(yymm: str):
         print(f"    KDI에서 {year}년 {month}월 수출입 동향 글을 찾지 못했습니다(아직 미발표).")
         return None
 
+    items = fetch_preliminary_products(num)
     body, _ = _kdi_text(KDI_VIEW.format(num=num))
     if not title_pat.search(body):
         print(f"    KDI 글 num={num}의 제목이 예상과 다릅니다. 건너뜁니다.")
@@ -474,7 +531,7 @@ def fetch_preliminary_export(yymm: str):
         print(f"    KDI에서 읽은 수출액 {total_usd:,.0f}달러가 비정상이라 무시합니다.")
         return None
     print(f"    속보 총수출 {total_usd/1e8:,.1f}억달러 (YoY {yoy_pct:+.1f}%) [KDI num={num}]")
-    return total_usd, yoy_pct
+    return total_usd, yoy_pct, items
 
 
 def update_export_data(existing):
@@ -589,16 +646,24 @@ def update_export_data(existing):
                 print(f"    속보 총수출 {total_usd/1e8:,.1f}억달러 [관세청 수출입총괄 API]")
         except Exception as e:
             print(f"    총괄 API 실패({type(e).__name__}) - KDI로 대체 시도")
-        if not total_usd:
-            try:
-                got = fetch_preliminary_export(ym)
-                total_usd = got[0] if got else None
-            except Exception as e:
-                print(f"    KDI 속보 수집도 실패({type(e).__name__}: {e})")
+        prelim_items = {}
+        try:
+            got = fetch_preliminary_export(ym)
+            if got:
+                # 총액은 관세청 API 값을 우선하고(정밀도가 높다), 품목별은
+                # 보도자료에만 있으므로 여기서만 얻는다.
+                if not total_usd:
+                    total_usd = got[0]
+                prelim_items = got[2] or {}
+        except Exception as e:
+            print(f"    KDI 속보 수집 실패({type(e).__name__}: {e})")
         if total_usd:
             wd = korea_working_days(int(ym[:4]), int(ym[4:]))
             total_1000[ym] = round(total_usd / 1000, 1)
             daily_1000[ym] = round(total_usd / 1000 / wd, 1) if wd else None
+            for cat, val in prelim_items.items():
+                if cat in products:
+                    products[cat][ym] = val
             prelim[ym] = True
     if prelim:
         print(f"  속보치로 채운 달: {sorted(prelim)}")
