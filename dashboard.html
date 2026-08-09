@@ -92,14 +92,14 @@
 
 <div class="chart-block">
   <h2>한국 월별 수출총액(KOSIS) 및 전년동월대비 증감률 <span class="range" id="range-exportChart"></span></h2>
-  <p class="desc">막대는 월별 수출총액(억달러), 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
+  <p class="desc">막대는 월별 수출총액(억달러), 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. <strong>가장 최근 2개월은 옅은 막대</strong>로 표시했는데, 관세청 확정치도 발표 뒤 두어 달은 신고 정정분이 반영되며 값이 조금씩 바뀌기 때문입니다(실제로 2026-05 총액은 잠정 시점 대비 0.27% 조정됐습니다). YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
   <div class="chart-wrap"><canvas id="exportChart"></canvas></div>
   <div class="err" id="err-exportChart"></div>
 </div>
 
 <div class="chart-block">
   <h2>한국 월별 1일평균 수출액(추정) <span class="range" id="range-exportDailyChart"></span></h2>
-  <p class="desc">월 수출총액을 조업일수로 나눈 값입니다. 조업일수가 월마다 다르기 때문에, 총액만 보면 조업일수가 많았던 달이 실제 수출 활력보다 좋아 보일 수 있는데 이 지표는 그 효과를 제거해줍니다. 꺾은선은 1일평균 수출액의 전년동월대비 증감률(YoY)로, 조업일수 효과를 뺀 순수한 수출 활력의 연간 변화를 보여줍니다. 조업일수는 관세청·산업통상자원부와 같은 기준(평일에서 법정공휴일과 근로자의 날을 빼고, 토요일은 0.5일로 계산)으로 산출해 산업부 '수출입 동향'이 발표하는 일평균 수출액과 맞춰져 있습니다.</p>
+  <p class="desc">월 수출총액을 조업일수로 나눈 값입니다. 총액 차트와 마찬가지로 <strong>최근 2개월은 옅은 막대</strong>(개정 가능 구간)입니다. 조업일수가 월마다 다르기 때문에, 총액만 보면 조업일수가 많았던 달이 실제 수출 활력보다 좋아 보일 수 있는데 이 지표는 그 효과를 제거해줍니다. 꺾은선은 1일평균 수출액의 전년동월대비 증감률(YoY)로, 조업일수 효과를 뺀 순수한 수출 활력의 연간 변화를 보여줍니다. 조업일수는 관세청·산업통상자원부와 같은 기준(평일에서 법정공휴일과 근로자의 날을 빼고, 토요일은 0.5일로 계산)으로 산출해 산업부 '수출입 동향'이 발표하는 일평균 수출액과 맞춰져 있습니다.</p>
   <div class="chart-wrap"><canvas id="exportDailyChart"></canvas></div>
   <div class="err" id="err-exportDailyChart"></div>
 </div>
@@ -248,7 +248,7 @@
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
   - CLI 최신월이 현재 달보다 1~2개월 뒤처져 보이는 것은 정상입니다. OECD가 M월 지수를 대체로 M+1월 상순에 발표하고, FRED에 반영되기까지 다시 일주일쯤 걸리기 때문입니다(이 저장소 이력상 2026년 6월 지수는 7월 17일에 들어왔습니다). <strong>특히 OECD는 8월에는 발표를 쉬고 7월·8월 지수를 2026년 9월 7일에 함께 공표하므로, 8월 중에는 CLI가 6월에서 더 나아가지 않습니다.</strong> 대시보드는 FRED가 주는 가장 최신값을 그대로 표시하며, OECD 원본 API(sdmx.oecd.org)를 직접 조회해도 최신월이 동일한 것을 확인했습니다.<br>
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
-  - 한국 수출은 총액 속보치가 익월 1일에 먼저 나오지만, 이 대시보드가 쓰는 품목별 수출입실적 API는 HS코드별 확정치라 <strong>익월 15일경</strong>에야 갱신됩니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
+  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 총액·품목 속보치를 익월 1일에 먼저 발표하지만, 그 속보치는 보도자료 형태라 공개 API가 없습니다. 이 대시보드는 HS코드별 확정치를 주는 관세청 API만 쓰므로 속보 구간은 비어 있고, 확정치가 나오는 <strong>익월 15일경</strong>에 채워집니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
@@ -827,6 +827,15 @@ safeChart('diffusionChart', () => new Chart(document.getElementById('diffusionCh
 // 시리즈인지 한눈에 구분되게 한다.
 const EXPORT_BAR_COLOR = 'rgba(68,114,196,0.55)';
 const EXPORT_BAR_BORDER = 'rgba(68,114,196,0.9)';
+// 관세청 확정치도 발표 후 두어 달 동안은 신고 정정분이 반영되며 조금씩 바뀐다.
+// 최근 2개월은 아직 값이 움직일 수 있으므로 옅게 칠해 구분한다.
+const EXPORT_PROVISIONAL_MONTHS = 2;
+const EXPORT_BAR_PROVISIONAL = 'rgba(68,114,196,0.22)';
+const EXPORT_BORDER_PROVISIONAL = 'rgba(68,114,196,0.5)';
+function barColors(months, base, provisional) {
+  const cut = months.length - EXPORT_PROVISIONAL_MONTHS;
+  return months.map((_, i) => (i >= cut ? provisional : base));
+}
 const EXPORT_YOY_COLOR = '#D84315';
 const EXPORT_AXIS_BLUE = '#2F5597';
 function exportChartOptions(leftTitle) {
@@ -843,7 +852,7 @@ function exportChartOptions(leftTitle) {
 
 safeChart('exportChart', () => new Chart(document.getElementById('exportChart'), {
   data: { labels: expMonthsT.map(monthLabel), datasets: [
-    { type: 'bar', label: '수출액(억달러)', data: expValsT, backgroundColor: EXPORT_BAR_COLOR, borderColor: EXPORT_BAR_BORDER, borderWidth: 1, yAxisID: 'y', order: 2 },
+    { type: 'bar', label: '수출액(억달러)', data: expValsT, backgroundColor: barColors(expMonthsT, EXPORT_BAR_COLOR, EXPORT_BAR_PROVISIONAL), borderColor: barColors(expMonthsT, EXPORT_BAR_BORDER, EXPORT_BORDER_PROVISIONAL), borderWidth: 1, yAxisID: 'y', order: 2 },
     { type: 'line', label: 'YoY(%)', data: expYoyT, borderColor: EXPORT_YOY_COLOR, backgroundColor: EXPORT_YOY_COLOR, borderWidth: 3.5, pointHoverRadius: 4, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
   ]},
   options: exportChartOptions('수출액(억$)')
@@ -851,7 +860,7 @@ safeChart('exportChart', () => new Chart(document.getElementById('exportChart'),
 
 safeChart('exportDailyChart', () => new Chart(document.getElementById('exportDailyChart'), {
   data: { labels: expMonthsDailyT.map(monthLabel), datasets: [
-    { type: 'bar', label: '1일평균 수출액(억달러, 추정)', data: expDailyValsT, backgroundColor: EXPORT_BAR_COLOR, borderColor: EXPORT_BAR_BORDER, borderWidth: 1, yAxisID: 'y', order: 2 },
+    { type: 'bar', label: '1일평균 수출액(억달러)', data: expDailyValsT, backgroundColor: barColors(expMonthsDailyT, EXPORT_BAR_COLOR, EXPORT_BAR_PROVISIONAL), borderColor: barColors(expMonthsDailyT, EXPORT_BAR_BORDER, EXPORT_BORDER_PROVISIONAL), borderWidth: 1, yAxisID: 'y', order: 2 },
     { type: 'line', label: 'YoY(%)', data: expDailyYoyT, borderColor: EXPORT_YOY_COLOR, backgroundColor: EXPORT_YOY_COLOR, borderWidth: 3.5, pointHoverRadius: 4, yAxisID: 'y1', order: 1, ...COMMON_LINE_OPTS },
   ]},
   options: exportChartOptions('1일평균 수출액(억$)')
