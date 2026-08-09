@@ -55,6 +55,12 @@
 
 <div class="cards" id="cards"></div>
 
+<div class="chart-block">
+  <h2>데이터 발표 일정 <span class="range">지표마다 발표 주기가 달라 최신 시점이 서로 다릅니다</span></h2>
+  <p class="desc">"이번 달인데 왜 지난달 데이터가 없지?"를 바로 확인할 수 있도록, 지표군별로 발표 주기와 현재 대시보드가 갖고 있는 최신 시점, 다음 갱신 예정일을 정리했습니다. 날짜가 고정 공표일이 아닌 항목은 '예상'으로 표시했습니다.</p>
+  <div id="releaseTable"></div>
+</div>
+
 <h3>1. 수출 · 경기선행지수</h3>
 
 <div class="chart-block">
@@ -244,7 +250,7 @@
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
   - 한국 수출은 총액 속보치가 익월 1일에 먼저 나오지만, 이 대시보드가 쓰는 품목별 수출입실적 API는 HS코드별 확정치라 <strong>익월 15일경</strong>에야 갱신됩니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
-  - 원/달러 환율(DEXKOUS), 달러인덱스(DTWEXBGS, 무역가중 Broad), WTI 유가(DCOILWTICO): FRED. 환율은 뉴욕 정오 기준 고시환율이라 국내 시장 환율과 소폭 다를 수 있습니다.<br>
+  - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
   - 미국 산업생산(INDPRO), 핵심자본재 신규수주(NEWORDER), 필라델피아 연준 제조업지수(GACDFSA066MSFRBPHI), 뉴욕 연준 제조업지수(GACDISA066MSFRBNY): FRED. ISM 제조업 PMI는 유료 라이선스라 FRED에서 제공되지 않아 이 지표들로 대신합니다.<br>
   - VKOSPI(한국 변동성지수): yfinance(^VKOSPI 티커)로 시도했으나, 야후 파이낸스가 이 티커를 지원하지 않아 확인 결과 데이터를 가져올 수 없었습니다. 그래서 VIX 차트에는 미국 VIX만 표시됩니다.<br>
@@ -256,7 +262,7 @@
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
   - '13개국 평균'은 OECD가 공식 발표하는 G20 CLI 지수가 아니라, 이 대시보드가 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코·프랑스·이탈리아·스페인·인도네시아 13개국 CLI를 단순평균한 자체 계산값입니다. FRED가 제공하던 공식 OECD/G20 종합 CLI 시리즈는 2022년 11월 이후 갱신이 중단되어 이 대시보드에서는 쓸 수 없습니다.<br>
   - 조업일수는 평일에서 법정공휴일과 근로자의 날(5/1)을 빼고 토요일을 0.5일로 더해 계산합니다(관세청·산업부 기준). 산업부 '수출입 동향'이 발표한 일평균 수출액에서 역산한 조업일수와 2026년 3~7월 5개월이 모두 일치하는 것을 확인했습니다. 다만 임시공휴일은 holidays 패키지 반영 시점에 따라 누락될 수 있습니다.<br>
-  - 품목 비중은 각 품목을 대표 HS코드로만 집계하기 때문에, 산업부가 발표하는 MTI 분류 기준 비중보다 낮게 나옵니다. 예를 들어 2026-06 반도체 비중은 이 대시보드에서 32.9%(HS 8542), 산업부 기준으로는 43.8%입니다. 증감률(YoY)은 두 기준이 거의 같게 나오므로(2026-06 기준 +173.9% vs +178.8%) 방향성 판단에는 문제가 없지만, 비중의 절대 수준을 다른 자료와 비교할 때는 기준 차이를 감안해야 합니다.<br>
+  - 반도체는 산업통상자원부 '수출입 동향'과 비중을 맞추기 위해 HS 8541(개별소자)+8542(집적회로)+8473(메모리모듈 등 부분품)으로 집계합니다. 산업부 발표 비중과 2026-05(42.24% vs 42.3%), 2026-06(43.72% vs 43.8%) 두 달 모두 0.1%p 이내로 일치하는 것을 확인했습니다. 나머지 품목(자동차·이차전지·선박·철강판재류)은 대표 HS코드 하나씩만 쓰므로 산업부 기준보다 낮게 나올 수 있고, 특히 철강판재류는 7208(열연강판)만 반영해 크게 과소집계됩니다.<br>
   - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함합니다. 각 품목에 쓰는 HS코드는 반도체 8542, 자동차 8703, 이차전지 8507, 선박 8901, 철강판재류 7208이며, 선박·철강판재류는 대표 코드 하나만 잡히므로 업계에서 쓰는 품목 통계보다 과소집계됩니다(예: 철강판재류는 냉연·도금강판 등이 빠짐).
 </div>
 
@@ -399,9 +405,13 @@ const vkospi = seriesToSorted(D.vkospi || {});
 const m2 = seriesToSorted(fm.M2SL);
 const walcl = seriesToSorted(fm.WALCL);
 const hySpread = seriesToSorted(fm.BAMLH0A0HYM2);
-const usdkrw = seriesToSorted(fm.DEXKOUS);
-const dollarIdx = seriesToSorted(fm.DTWEXBGS);
-const wti = seriesToSorted(fm.DCOILWTICO);
+// 환율·달러인덱스·유가는 매일 갱신되는 시장 시세(market_daily)를 우선 쓰고,
+// 아직 그 필드가 없는 예전 data.js면 FRED 값으로 넘어간다.
+const md = D.market_daily || {};
+const usdkrw = seriesToSorted(md.USDKRW && Object.keys(md.USDKRW).length ? md.USDKRW : fm.DEXKOUS);
+const dollarIdx = seriesToSorted(md.DXY && Object.keys(md.DXY).length ? md.DXY : fm.DTWEXBGS);
+const wti = seriesToSorted(md.WTI && Object.keys(md.WTI).length ? md.WTI : fm.DCOILWTICO);
+const usingMarketFx = !!(md.USDKRW && Object.keys(md.USDKRW).length);
 const indpro = seriesToSorted(fm.INDPRO);
 const neworder = seriesToSorted(fm.NEWORDER);
 const phillyFed = seriesToSorted(fm.GACDFSA066MSFRBPHI);
@@ -554,6 +564,51 @@ const overallLabel = { green: '전반적으로 안정적인 국면', yellow: '�
 document.getElementById('signalOverall').innerHTML = `<span class="signal-dot ${worstSignal}"></span> 종합 신호: ${overallLabel[worstSignal]}`;
 
 document.getElementById('metaLine').textContent = `이 대시보드의 데이터는 ${D.generated_at || '-'} 시점 기준입니다. (GitHub Actions가 하루 2회 전 지표 자동 갱신)`;
+
+// ================= 데이터 발표 일정 =================
+// 지표마다 공표 주기가 달라 "최신 시점"이 제각각이라, 어디까지 들어와 있고 다음에
+// 언제 채워지는지를 한 표로 보여준다.
+function buildReleaseTable() {
+  const today = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  const nextDayOfMonth = (day, from) => {
+    // from(기본 오늘) 이후로 가장 가까운 '매월 day일'
+    const base = from || today;
+    let d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), day));
+    if (d <= base) d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, day));
+    return d;
+  };
+  const lastOf = arr => arr.length ? arr[arr.length - 1] : null;
+
+  // OECD CLI는 8월 발표를 쉬고 7·8월 지수를 2026-09-07에 함께 낸다(OECD 공표 일정).
+  const oecdFixed = new Date(Date.UTC(2026, 8, 7));
+  const cliNext = today < oecdFixed ? { date: iso(oecdFixed), fixed: true } : { date: iso(nextDayOfMonth(7)), fixed: false };
+
+  const cliLatest = monthsCli.length ? monthLabel(monthsCli[monthsCli.length - 1]) : '-';
+  const expLatest = expMonthsT.length ? monthLabel(expMonthsT[expMonthsT.length - 1]) : '-';
+  const rows = [
+    { name: 'OECD 경기선행지수(CLI)', cycle: '월 1회 (대체로 익월 상순, FRED 반영에 +1주)',
+      latest: cliLatest, next: cliNext.date + (cliNext.fixed ? ' (OECD 공표일, 7·8월분 동시 발표)' : ' 예상') },
+    { name: '한국 수출 (관세청 확정치)', cycle: '월 1회 (익월 15일경 확정치)',
+      latest: expLatest, next: iso(nextDayOfMonth(15)) + ' 예상' },
+    { name: '미국 M2 · 산업생산 · 신규수주', cycle: '월 1회 (익월 하순)',
+      latest: ymLabel(lastOf(m2T.dates)) || '-', next: iso(nextDayOfMonth(25)) + ' 예상' },
+    { name: '연준 제조업 서베이 (필라델피아·뉴욕)', cycle: '월 1회 (당월 중순)',
+      latest: ymLabel(lastOf(phillyFed.dates)) || '-', next: iso(nextDayOfMonth(18)) + ' 예상' },
+    { name: '미국 금리 · VIX · 주가지수 · MDD', cycle: '영업일마다',
+      latest: lastOf(dgs10.dates) || '-', next: '다음 영업일' },
+    { name: '환율 · 달러인덱스 · 유가', cycle: usingMarketFx ? '영업일마다 (시장 시세)' : '주 1회 (연준 H.10)',
+      latest: lastOf(usdkrw.dates) || '-', next: usingMarketFx ? '다음 영업일' : '매주 월요일' },
+  ];
+  document.getElementById('releaseTable').innerHTML = `
+    <table class="clitable">
+      <thead><tr><th>지표군</th><th>발표 주기</th><th>현재 최신</th><th>다음 갱신</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr><td>${r.name}</td><td style="text-align:left">${r.cycle}</td>
+        <td style="text-align:left">${r.latest}</td><td style="text-align:left">${r.next}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
 
 function setRange(id, first, last) {
   const el = document.getElementById('range-' + id);
@@ -1088,6 +1143,8 @@ function buildPriceChart(canvasId, missingNoteId, label, series, color) {
 
 buildPriceChart('kospiPriceChart', 'kospiPriceMissingNote', 'KOSPI 종가', kospiPrice, palette[5]);
 buildPriceChart('sp500PriceChart', null, 'S&P500 종가', sp500Price, palette[0]);
+
+safeChart('releaseTable', buildReleaseTable);
 </script>
 
 </body>

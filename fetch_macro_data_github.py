@@ -63,13 +63,23 @@ COUNTRIES = {
 # 선박은 8901(여객선·화물선)만, 철강판재류는 7208(열연강판)만 잡히므로 실제
 # 업계 통계보다 과소집계된다 - 기존 시리즈와의 연속성을 위해 그대로 유지한다.
 CATEGORY_HS = {
-    "반도체": ("8542",),
+    # 반도체는 산업통상자원부 '수출입 동향'이 쓰는 분류에 맞춰 8542(집적회로)에
+    # 8541(개별소자)과 8473(메모리모듈 등 부분품)을 더한다. 산업부가 발표한 비중과
+    # 2026-05(42.24% vs 42.3%), 2026-06(43.72% vs 43.8%) 두 달 모두 0.1%p 이내로
+    # 일치하는 것을 확인한 조합이다. 8542만 쓰면 비중이 10%p 넘게 과소집계된다.
+    "반도체": ("8541", "8542", "8473"),
     "자동차": ("8703",),
     "이차전지": ("8507",),
     "선박": ("8901",),
     "철강판재류": ("7208",),
 }
 DEFAULT_CATEGORIES = list(CATEGORY_HS)
+
+# 품목 분류 기준이 바뀌면 과거 달도 새 기준으로 다시 받아야 그래프에 단차가 생기지
+# 않는다. 관세청 API가 자주 끊기므로 한 번에 다 받지 않고, 실행마다 아직 새 기준으로
+# 바뀌지 않은 달을 조금씩 채워 나간다(product_basis_months에 기록).
+CATEGORY_BASIS = "motie-semi-v1"
+BACKFILL_PER_RUN = 15
 
 # 조업일수 계산 기준이 바뀌면 1일평균 수출액 전 구간을 새 기준으로 다시 계산해야
 # 한다. data.js에 이 값을 같이 저장해 두고, 코드의 기준과 다르면 전체 재계산한다.
@@ -93,9 +103,12 @@ FRED_MACRO_SERIES = {
     "NASDAQCOM": "나스닥종합지수",
     "WALCL": "Fed 대차대조표(총자산)",
     "BAMLH0A0HYM2": "미국 하이일드 스프레드(ICE BofA OAS)",
-    "DEXKOUS": "원/달러 환율",
-    "DTWEXBGS": "달러인덱스(무역가중 Broad)",
-    "DCOILWTICO": "WTI 유가",
+    # 아래 3개는 연준 H.10/EIA 계열이라 매주 한 번씩 묶어서 공표된다(예: 일요일에
+    # 조회하면 최신값이 지난 금요일이 아니라 그 전 금요일). 차트에는 매일 갱신되는
+    # 야후 파이낸스 값을 쓰고, 이 시리즈들은 장기 비교용으로만 남겨둔다.
+    "DEXKOUS": "원/달러 환율(연준 H.10, 주간 공표)",
+    "DTWEXBGS": "달러인덱스 무역가중 Broad(연준 H.10, 주간 공표)",
+    "DCOILWTICO": "WTI 유가(EIA, 주간 공표)",
     # ISM PMI 원본은 유료 라이선스라 FRED 제공이 중단되어, 무료로 받을 수 있는
     # 제조업 경기 지표들로 대신한다.
     "INDPRO": "미국 산업생산지수",
@@ -363,6 +376,13 @@ def update_export_data(existing):
         for cat in CATEGORY_HS
     }
 
+    # 품목 분류 기준이 바뀌었으면 기존 달들의 기준 기록을 버리고 처음부터 다시 채운다.
+    basis_ok = set(existing.get("product_basis_months", []))
+    if existing.get("product_basis") != CATEGORY_BASIS:
+        if basis_ok:
+            print(f"  품목 분류 기준이 '{CATEGORY_BASIS}'로 바뀌어 과거 달을 다시 받습니다.")
+        basis_ok = set()
+
     if not CUSTOMS_SERVICE_KEY:
         print("  CUSTOMS_SERVICE_KEY가 없어 수출 데이터는 기존 값을 그대로 둡니다.")
     else:
@@ -374,6 +394,13 @@ def update_export_data(existing):
             m -= 1
             if m == 0:
                 m, y = 12, y - 1
+        # 아직 새 분류 기준으로 받지 않은 과거 달을 최신 달부터 조금씩 채운다.
+        pending = [ym for ym in sorted(total_1000, reverse=True)
+                   if ym not in basis_ok and ym not in targets]
+        if pending:
+            print(f"  새 분류 기준으로 다시 받을 과거 달 {len(pending)}개월 중 "
+                  f"이번 실행에서 {min(len(pending), BACKFILL_PER_RUN)}개월 처리")
+            targets.extend(pending[:BACKFILL_PER_RUN])
         # 조업일수 기준 자체를 바꾼 경우에는 기존 값과 어긋나는 게 당연하므로
         # 검증을 건너뛰고 전 구간을 새 기준으로 다시 계산한다.
         basis_changed = existing.get("export_workday_basis") != WORKDAY_BASIS
@@ -404,6 +431,7 @@ def update_export_data(existing):
             daily_1000[yymm] = round(total_usd / 1000 / wd, 1) if wd else None
             for cat, val in cats.items():
                 products[cat][yymm] = val
+            basis_ok.add(yymm)   # 이 달은 현재 품목 분류 기준으로 받았다
             print(
                 f"    총액 {total_usd/1e8:,.1f}억달러, 조업일수 {wd}일, "
                 f"반도체 {cats['반도체']/1e8:,.1f}억달러"
@@ -424,6 +452,10 @@ def update_export_data(existing):
             if fixed:
                 print(f"  1일평균 수출액 {fixed}개월을 현재 조업일수 기준으로 재계산했습니다.")
 
+    remaining = [ym for ym in total_1000 if ym not in basis_ok]
+    if remaining:
+        print(f"  아직 이전 품목 분류 기준인 달: {len(remaining)}개월 "
+              f"(다음 실행에서 계속 채웁니다)")
     months_sorted = sorted(total_1000)
     if months_sorted:
         print(f"  수출총액 보유 구간: {months_sorted[0]} ~ {months_sorted[-1]} ({len(months_sorted)}개월)")
@@ -432,6 +464,8 @@ def update_export_data(existing):
         "export_total_1000usd": total_1000,
         "export_daily_avg_1000usd": daily_1000,
         "export_workday_basis": WORKDAY_BASIS,
+        "product_basis": CATEGORY_BASIS,
+        "product_basis_months": sorted(basis_ok),
         "categories": DEFAULT_CATEGORIES,
         "product_months": product_months,
         "product_1000usd": products,
@@ -475,6 +509,11 @@ def main():
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
     sox = fetch_yfinance_series("^SOX", DAILY_YEARS_BACK)
+    # 환율·달러인덱스·유가는 FRED(연준 H.10, EIA)가 주 1회 묶어서 내보내 최대 일주일까지
+    # 묵은 값이 된다. 매일 갱신되는 시장 시세로 대신 보여준다.
+    usdkrw = fetch_yfinance_series("KRW=X", DAILY_YEARS_BACK)
+    dxy = fetch_yfinance_series("DX-Y.NYB", DAILY_YEARS_BACK)
+    wti = fetch_yfinance_series("CL=F", DAILY_YEARS_BACK)
     mdd["KOSPI"] = compute_mdd_series(kospi)
     mdd["KOSDAQ150"] = compute_mdd_series(kosdaq150)
 
@@ -492,6 +531,8 @@ def main():
         "cli": cli,
         **exports,
         "fred_macro": fred_macro,
+        # 매일 갱신되는 시장 시세 (환율·달러인덱스·유가)
+        "market_daily": {"USDKRW": usdkrw, "DXY": dxy, "WTI": wti},
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
                      "KOSPI": kospi, "KOSDAQ150": kosdaq150, "SOX": sox},
