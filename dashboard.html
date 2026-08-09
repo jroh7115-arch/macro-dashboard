@@ -140,7 +140,33 @@
   <div class="err" id="err-semiProxyChart"></div>
 </div>
 
-<h3>2. 미국 금리 · 유동성</h3>
+<h3>2. 한국 금리 · 물가 · 경기심리</h3>
+
+<div class="chart-block">
+  <h2>한국 국고채 금리 (10년 · 3년) <span class="range" id="range-ktbChart"></span></h2>
+  <p class="desc">국내 장기금리는 주식의 할인율로 작용해, 같은 이익이라도 금리가 높으면 적정 주가가 낮아집니다. 10년물이 오르는데 수출·이익이 그만큼 따라주지 않으면 밸류에이션 부담이 커진 국면입니다. 3년물과의 격차는 향후 경기·통화정책 기대를 반영합니다.</p>
+  <div class="chart-wrap"><canvas id="ktbChart"></canvas></div>
+  <div class="missing" id="ktbMissingNote"></div>
+  <div class="err" id="err-ktbChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>한국 소비자물가 상승률(CPI YoY) <span class="range" id="range-cpiChart"></span></h2>
+  <p class="desc">전년동월대비 소비자물가 상승률입니다. 물가가 목표(2%)를 웃도는 동안은 한국은행이 금리를 낮추기 어려워 할인율 부담이 이어지고, 물가가 내려오면 금리 인하 여지가 생깁니다.</p>
+  <div class="chart-wrap"><canvas id="cpiChart"></canvas></div>
+  <div class="missing" id="cpiMissingNote"></div>
+  <div class="err" id="err-cpiChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>한국 경기심리: 제조업 업황BSI · 경제심리지수(ESI) <span class="range" id="range-sentimentChart"></span></h2>
+  <p class="desc">기업이 체감하는 경기입니다. BSI는 100을 기준으로 위면 좋다고 답한 기업이 많다는 뜻이고, ESI(순환변동치)는 기업·소비자 심리를 합쳐 100 중심으로 표준화한 지표입니다. ISM PMI가 유료라 미국은 연준 서베이로 대신했는데, 한국은 이 두 지표가 같은 역할을 합니다.</p>
+  <div class="chart-wrap"><canvas id="sentimentChart"></canvas></div>
+  <div class="missing" id="sentimentMissingNote"></div>
+  <div class="err" id="err-sentimentChart"></div>
+</div>
+
+<h3>3. 미국 금리 · 유동성</h3>
 
 <div class="chart-block">
   <h2>미국 국채 10년물·2년물 금리 및 장단기 금리차(10Y-2Y) <span class="range" id="range-ratesChart"></span></h2>
@@ -170,7 +196,7 @@
   <div class="err" id="err-hySpreadChart"></div>
 </div>
 
-<h3>3. 환율 · 원자재 · 반도체 업황</h3>
+<h3>4. 환율 · 원자재 · 반도체 업황</h3>
 
 <div class="chart-block">
   <h2>원/달러 환율 및 달러인덱스 <span class="range" id="range-fxChart"></span></h2>
@@ -196,7 +222,7 @@
   <div class="err" id="err-soxChart"></div>
 </div>
 
-<h3>4. 미국 실물경기 · 제조업 (PMI 대용)</h3>
+<h3>5. 미국 실물경기 · 제조업 (PMI 대용)</h3>
 
 <div class="chart-block">
   <h2>연준 제조업 서베이: 필라델피아 · 뉴욕(엠파이어스테이트) <span class="range" id="range-fedSurveyChart"></span></h2>
@@ -222,7 +248,7 @@
   <div class="err" id="err-capexChart"></div>
 </div>
 
-<h3>5. 시장 심리 (VIX · MDD)</h3>
+<h3>6. 시장 심리 (VIX · MDD)</h3>
 
 <div class="chart-block">
   <h2>VIX 변동성지수 (미국) <span class="range" id="range-vixChart"></span></h2>
@@ -248,7 +274,7 @@
   <div class="err" id="err-mddChartUS"></div>
 </div>
 
-<h3>6. 지수 종가 추이</h3>
+<h3>7. 지수 종가 추이</h3>
 
 <div class="chart-block">
   <h2>KOSPI 지수 종가 <span class="range" id="range-kospiPriceChart"></span></h2>
@@ -270,7 +296,7 @@
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
   - CLI 최신월이 현재 달보다 1~2개월 뒤처져 보이는 것은 정상입니다. OECD가 M월 지수를 대체로 M+1월 상순에 발표하고, FRED에 반영되기까지 다시 일주일쯤 걸리기 때문입니다(이 저장소 이력상 2026년 6월 지수는 7월 17일에 들어왔습니다). <strong>특히 OECD는 8월에는 발표를 쉬고 7월·8월 지수를 2026년 9월 7일에 함께 공표하므로, 8월 중에는 CLI가 6월에서 더 나아가지 않습니다.</strong> 대시보드는 FRED가 주는 가장 최신값을 그대로 표시하며, OECD 원본 API(sdmx.oecd.org)를 직접 조회해도 최신월이 동일한 것을 확인했습니다.<br>
   - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
-  - <strong>월중 조기 수출지표</strong>: 관세청_수출 주요품목별 10일 단위 잠정치 API(apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs). 매월 11일에 1~10일 누적, 21일에 1~20일 누적이 나옵니다. 이 API의 품목 구분은 관세청 자체 분류라 산업부 MTI와 달라(이차전지가 없고 철강 정의도 다름) 품목 차트에는 쓰지 않고 총액 기준 조기 지표로만 씁니다.<br>  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
+  - 한국 국고채 금리(721Y001), 소비자물가지수(901Y009), 제조업 업황실적BSI(512Y007), 경제심리지수 순환변동치(513Y001): 한국은행 ECOS(ecos.bok.or.kr). 미국 지표는 FRED, 한국 지표는 ECOS로 나뉘어 있어 발표 시점이 서로 다릅니다.<br>  - <strong>월중 조기 수출지표</strong>: 관세청_수출 주요품목별 10일 단위 잠정치 API(apis.data.go.kr/1220000/prlstMmUtPrviExpAcrs). 매월 11일에 1~10일 누적, 21일에 1~20일 누적이 나옵니다. 이 API의 품목 구분은 관세청 자체 분류라 산업부 MTI와 달라(이차전지가 없고 철강 정의도 다름) 품목 차트에는 쓰지 않고 총액 기준 조기 지표로만 씁니다.<br>  - <strong>속보치와 확정치</strong>: 한국 수출은 산업통상자원부가 익월 1일에 총액 속보치를, 관세청이 익월 15일경에 HS코드별 확정치를 냅니다. 속보 총액은 관세청 수출입총괄 API(Newtrade)에서 받습니다 - 품목별 API가 아직 빈 응답을 주는 시점에도 이 API에는 그 달 총액이 들어 있습니다. 이 API가 막히면 KDI 경제정보센터(eiec.kdi.re.kr)의 산업부 보도자료 요약에서 총액을 읽는 방식으로 대체합니다(산업부 홈페이지 자체는 첨부 직접 내려받기가 막혀 있어 쓸 수 없습니다). 속보 단계에서는 <strong>총액과 1일평균만</strong> 채워지고 품목별 수출은 확정치가 나와야 들어옵니다. 그래서 8월 초에는 7월 수출이 아직 그래프에 없고, 8월 15일 전후 자동 갱신에서 들어옵니다. 자동 갱신 때마다 최근 3개월치를 다시 받아 개정분을 반영합니다.<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
@@ -1071,6 +1097,72 @@ safeChart('hySpreadChart', () => new Chart(document.getElementById('hySpreadChar
   ]},
   options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '스프레드(%p)' } } } }
 }));
+
+// ================= 한국 금리·물가·경기심리 (한국은행 ECOS) =================
+const BOK = D.bok || {};
+function bokSeries(key) {
+  const obj = BOK[key] || {};
+  const months = Object.keys(obj).sort();
+  return { months, vals: months.map(m => obj[m]) };
+}
+function drawBokChart(canvasId, noteId, series, yTitle, opts) {
+  safeChart(canvasId, () => {
+    const avail = series.filter(s => s.data.months.length);
+    if (!avail.length) {
+      const el = document.getElementById(noteId);
+      if (el) el.textContent = '한국은행 ECOS 데이터가 아직 수집되지 않았습니다.';
+      return;
+    }
+    const all = Array.from(new Set(avail.flatMap(s => s.data.months))).sort();
+    setRange(canvasId, monthLabel(all[0]), monthLabel(all[all.length - 1]));
+    new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels: all.map(monthLabel), datasets: avail.map(s => {
+        const map = {}; s.data.months.forEach((m, i) => { map[m] = s.data.vals[i]; });
+        return { label: s.label, data: all.map(m => (m in map ? map[m] : null)),
+                 borderColor: s.color, borderWidth: s.width || 2.5, ...COMMON_LINE_OPTS };
+      })},
+      options: { responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: { y: Object.assign({ title: { display: true, text: yTitle } }, opts || {}) } }
+    });
+  });
+}
+
+drawBokChart('ktbChart', 'ktbMissingNote', [
+  { label: '국고채 10년(%)', data: bokSeries('KTB10Y'), color: '#2F5597', width: 3 },
+  { label: '국고채 3년(%)', data: bokSeries('KTB3Y'), color: '#ED7D31' },
+], '금리(%)');
+
+// CPI는 지수라 전년동월대비로 바꿔 보여준다
+safeChart('cpiChart', () => {
+  const cpi = bokSeries('CPI');
+  if (!cpi.months.length) {
+    document.getElementById('cpiMissingNote').textContent = '한국은행 ECOS 데이터가 아직 수집되지 않았습니다.';
+    return;
+  }
+  const yoy = cpi.vals.map((v, i) => (i < 12 || !cpi.vals[i - 12]) ? null : (v / cpi.vals[i - 12] - 1) * 100);
+  const start = firstValidIdx(yoy);
+  const labels = cpi.months.slice(start).map(monthLabel);
+  setRange('cpiChart', labels[0], labels[labels.length - 1]);
+  new Chart(document.getElementById('cpiChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'CPI YoY(%)', data: yoy.slice(start),
+      borderColor: '#C62828', borderWidth: 3, fill: true,
+      backgroundColor: 'rgba(198,40,40,0.08)', ...COMMON_LINE_OPTS }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { title: { display: true, text: 'YoY(%)' },
+        grid: { color: ctx => ctx.tick.value === 2 ? '#999' : '#eee',
+                lineWidth: ctx => ctx.tick.value === 2 ? 1.5 : 1 } } } }
+  });
+});
+
+drawBokChart('sentimentChart', 'sentimentMissingNote', [
+  { label: '제조업 업황BSI', data: bokSeries('BSI_MFG'), color: '#7B1FA2', width: 3 },
+  { label: '경제심리지수(ESI)', data: bokSeries('ESI'), color: '#70AD47' },
+], '지수 (100 기준)', { grid: { color: ctx => ctx.tick.value === 100 ? '#888' : '#eee',
+                                lineWidth: ctx => ctx.tick.value === 100 ? 1.5 : 1 } });
 
 // ================= 환율 · 원자재 · 반도체 =================
 const NEW_DATA_MISSING_MSG = '데이터가 아직 없습니다. GitHub Actions 자동 갱신(하루 2회)이 한 번 돌고 나면 표시됩니다.';

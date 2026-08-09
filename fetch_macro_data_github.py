@@ -17,9 +17,10 @@ API 모두 해외 IP에서 정상 응답했습니다(HTTP 200, resultCode 00). �
 필요한 환경변수 (GitHub 저장소 Settings > Secrets and variables > Actions):
     FRED_API_KEY          (필수)
     CUSTOMS_SERVICE_KEY   (선택 - 없으면 수출 항목은 기존 값을 그대로 보존)
+    BOK_API_KEY           (선택 - 한국은행 ECOS. 없으면 한국 금리·물가·심리는 건너뜀)
 
 사용법 (GitHub Actions 워크플로우 안에서):
-    pip install requests yfinance pandas holidays
+    pip install requests yfinance pandas pdfplumber holidays==0.100
     python fetch_macro_data_github.py
 """
 
@@ -94,6 +95,18 @@ BACKFILL_PER_RUN = int(os.environ.get("BACKFILL_PER_RUN") or 8)
 # 조업일수 계산 기준이 바뀌면 1일평균 수출액 전 구간을 새 기준으로 다시 계산해야
 # 한다. data.js에 이 값을 같이 저장해 두고, 코드의 기준과 다르면 전체 재계산한다.
 WORKDAY_BASIS = "official-sat-half-v1"
+
+# 한국은행 ECOS. 국내 금리·물가·경기심리는 FRED에 없어서 여기서 받는다.
+# (STAT_CODE, ITEM_CODE, 표시이름) - 전부 월 단위.
+BOK_API_KEY = os.environ.get("BOK_API_KEY", "")
+ECOS_URL = "https://ecos.bok.or.kr/api/StatisticSearch/{key}/json/kr/1/1000/{stat}/M/{s}/{e}/{items}"
+ECOS_SERIES = {
+    "KTB10Y": ("721Y001", "5050000", "국고채 10년"),
+    "KTB3Y": ("721Y001", "5020000", "국고채 3년"),
+    "CPI": ("901Y009", "0", "소비자물가지수"),
+    "BSI_MFG": ("512Y007", "AA/C0000", "제조업 업황실적BSI"),
+    "ESI": ("513Y001", "E2000", "경제심리지수(순환변동치)"),
+}
 
 CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 # 관세청은 잠정치를 뒤에 확정치로 개정하므로, 매 실행마다 최근 몇 달치를 다시
@@ -386,6 +399,41 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
 # 응답도 500바이트대라 가볍고 기존 키로 그대로 인증된다. 그래서 속보 총액은
 # 이 API에서 받고, 실패할 때만 KDI 스크래핑으로 넘어간다.
 CUSTOMS_TOTAL_URL = "https://apis.data.go.kr/1220000/Newtrade/getNewtradeList"
+
+
+def fetch_bok_series():
+    """한국은행 ECOS에서 국내 금리·물가·경기심리를 받아온다. {이름: {YYYYMM: 값}}."""
+    if not BOK_API_KEY:
+        print("  BOK_API_KEY가 없어 한국 금리·물가·심리는 건너뜁니다.")
+        return {}
+    now = datetime.now()
+    start = f"{now.year - 11}01"      # CPI를 전년동월대비로 바꿀 여유분 포함 11년
+    end = f"{now.year:04d}{now.month:02d}"
+    out = {}
+    for key, (stat, items, label) in ECOS_SERIES.items():
+        url = ECOS_URL.format(key=BOK_API_KEY, stat=stat, s=start, e=end, items=items)
+        try:
+            res = requests.get(url, timeout=60)
+            res.raise_for_status()
+            data = res.json()
+            # ECOS는 오류도 HTTP 200으로 주고 본문에 사유를 담는다
+            if "StatisticSearch" not in data:
+                print(f"  ECOS {label} 조회 실패: {str(data)[:120]}")
+                continue
+            vals = {}
+            for row in data["StatisticSearch"]["row"]:
+                try:
+                    vals[row["TIME"]] = float(row["DATA_VALUE"])
+                except (TypeError, ValueError, KeyError):
+                    continue
+            if vals:
+                out[key] = vals
+                latest = max(vals)
+                print(f"  - {label}: {len(vals)}개월 (최신 {latest} = {vals[latest]})")
+        except Exception as e:
+            print(f"  ECOS {label} 실패({type(e).__name__})")
+        time.sleep(0.3)
+    return out
 
 
 # 관세청 '수출 주요품목별 10일 단위 잠정치'. 월간 확정치보다 훨씬 빨라서
@@ -820,7 +868,10 @@ def main():
     if not vkospi:
         print("  ^VKOSPI: 야후 파이낸스에서 데이터를 가져오지 못했습니다 (티커 미지원 가능성).")
 
-    print("\n[5/5] 관세청에서 수출총액·품목별 수출액 수집 중...")
+    print("\n[5/6] 한국은행 ECOS에서 국내 금리·물가·경기심리 수집 중...")
+    bok = fetch_bok_series()
+
+    print("\n[6/6] 관세청에서 수출총액·품목별 수출액 수집 중...")
     exports = update_export_data(existing)
 
     data = {
@@ -832,6 +883,7 @@ def main():
         "fred_macro": fred_macro,
         # 매일 갱신되는 시장 시세 (환율·달러인덱스·유가)
         "market_daily": {"USDKRW": usdkrw, "DXY": dxy, "WTI": wti},
+        "bok": bok,
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
                      "KOSPI": kospi, "KOSDAQ150": kosdaq150, "SOX": sox},
