@@ -1,4 +1,4 @@
-name: Update macro dashboard data (FRED + yfinance only)
+name: Update macro dashboard data
 
 on:
   schedule:
@@ -22,11 +22,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests yfinance pandas
+        run: pip install requests yfinance pandas holidays
 
-      - name: Run data fetch script (FRED + yfinance only, KOSIS/customs preserved)
+      - name: Run data fetch script (FRED + yfinance + customs export data)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          CUSTOMS_SERVICE_KEY: ${{ secrets.CUSTOMS_SERVICE_KEY }}
         run: python fetch_macro_data_github.py
 
       - name: Commit and push data.js if it changed

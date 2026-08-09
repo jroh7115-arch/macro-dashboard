@@ -240,8 +240,8 @@
 <div class="notes">
   <strong>데이터 출처 및 한계</strong><br>
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
-  - 수출총액: KOSIS(kosis.kr) 한국무역협회 품목별수출입 통계표의 총액(SITC 'A', 분류방식과 무관한 순수 합계)<br>
-  - 품목별 수출액: 관세청_품목별 수출입실적(GW) API(apis.data.go.kr), HS코드 기준<br>
+  - 수출총액 및 품목별 수출액: 관세청_품목별 수출입실적 API(apis.data.go.kr), HS코드 기준. 총액은 해당 월 전체 HS코드 수출액의 합계입니다. 2026-06 이전 총액은 KOSIS(한국무역협회) 기준으로 수집된 값이 남아 있는데, 두 출처의 차이는 0.3% 이내라 그래프상 구분되지 않습니다.<br>
+  - 관세청은 발표 후에도 잠정치를 확정치로 개정하기 때문에, 자동 갱신 때마다 최근 6개월치를 다시 받아 덮어씁니다. 이번 달과 전월 데이터는 아직 발표 전일 수 있고, 그런 달은 그래프에 나타나지 않습니다(보통 익월 중순에 확정).<br>
   - 미국 금리(DGS10/DGS2/T10Y2Y), M2(M2SL), Fed 대차대조표(WALCL), VIX(VIXCLS), S&P500(SP500), 나스닥(NASDAQCOM): FRED<br>
   - 원/달러 환율(DEXKOUS), 달러인덱스(DTWEXBGS, 무역가중 Broad), WTI 유가(DCOILWTICO): FRED. 환율은 뉴욕 정오 기준 고시환율이라 국내 시장 환율과 소폭 다를 수 있습니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
@@ -255,13 +255,11 @@
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
   - '13개국 평균'은 OECD가 공식 발표하는 G20 CLI 지수가 아니라, 이 대시보드가 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코·프랑스·이탈리아·스페인·인도네시아 13개국 CLI를 단순평균한 자체 계산값입니다. FRED가 제공하던 공식 OECD/G20 종합 CLI 시리즈는 2022년 11월 이후 갱신이 중단되어 이 대시보드에서는 쓸 수 없습니다.<br>
   - 조업일수(1일평균 수출액 계산용)는 holidays 패키지의 한국 공휴일 데이터로 추정한 값이라, 대체공휴일·임시공휴일 반영이 완벽하지 않을 수 있습니다.<br>
-  - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함하며, 선박·철강은 대표 HS코드 일부만 반영합니다(과소집계 가능).
+  - 품목비중은 반도체/자동차/이차전지/선박/철강판재류 5개 품목만 포함합니다. 각 품목에 쓰는 HS코드는 반도체 8542, 자동차 8703, 이차전지 8507, 선박 8901, 철강판재류 7208이며, 선박·철강판재류는 대표 코드 하나만 잡히므로 업계에서 쓰는 품목 통계보다 과소집계됩니다(예: 철강판재류는 냉연·도금강판 등이 빠짐).
 </div>
 
 <div class="refresh">
-  미국 지표·지수·환율·원자재는 GitHub Actions가 하루 2회 자동 갱신합니다.
-  수출총액·1일평균 수출액·품목별 수출 차트만 <code>fetch_macro_data.py</code>를 본인 PC에서 실행해야 갱신됩니다
-  (KOSIS·관세청 API가 한국 IP에서만 접속되기 때문).
+  모든 지표를 GitHub Actions가 하루 2회 자동 갱신합니다 — 수출 데이터를 포함해 별도로 PC에서 실행할 것은 없습니다.
 </div>
 
 <script>
@@ -543,7 +541,7 @@ const worstSignal = signalDefs.some(s => s.color === 'red') ? 'red' : (signalDef
 const overallLabel = { green: '전반적으로 안정적인 국면', yellow: '일부 지표가 평소 범위를 벗어난 상태', red: '일부 지표가 크게 움직이고 있어 확인이 필요한 상태' };
 document.getElementById('signalOverall').innerHTML = `<span class="signal-dot ${worstSignal}"></span> 종합 신호: ${overallLabel[worstSignal]}`;
 
-document.getElementById('metaLine').textContent = `이 대시보드의 데이터는 ${D.generated_at || '-'} 시점 기준입니다. (미국 지표·지수·환율은 GitHub Actions로 하루 2회 자동 갱신, 수출·품목 데이터는 로컬 PC에서 fetch_macro_data.py 실행 시 갱신)`;
+document.getElementById('metaLine').textContent = `이 대시보드의 데이터는 ${D.generated_at || '-'} 시점 기준입니다. (GitHub Actions가 하루 2회 전 지표 자동 갱신)`;
 
 function setRange(id, first, last) {
   const el = document.getElementById('range-' + id);

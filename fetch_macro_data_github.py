@@ -1,37 +1,36 @@
 r"""
-한국 매크로 대시보드용 raw 데이터 수집 스크립트 - GitHub Actions 전용 "하이브리드" 버전.
+한국 매크로 대시보드용 raw 데이터 수집 스크립트 - GitHub Actions 전용.
 
-이 버전은 FRED(OECD CLI, 미국 금리/M2/VIX/지수/하이일드)와 야후 파이낸스
-(KOSPI/KOSDAQ150/VKOSPI)만 수집합니다. KOSIS·관세청 API는 한국 국내 IP에서만
-접근이 되는 것으로 확인되어(GitHub Actions 서버=해외 IP라 접속이 타임아웃 남),
-이 버전에서는 시도하지 않습니다.
+수집 대상:
+  - FRED: OECD CLI, 미국 금리/M2/VIX/지수/하이일드/환율/유가/산업생산 등
+  - 야후 파이낸스: KOSPI / KOSDAQ150 / SOX
+  - 관세청 품목별 수출입실적 API: 수출총액 / 1일평균 수출액 / 품목별 수출액
 
-대신 기존 data.js에 이미 들어있는 수출총액/일평균수출액/품목별수출액
-(export_total_1000usd / export_daily_avg_1000usd / categories / product_months /
-product_1000usd)은 그대로 보존해서 덮어쓰지 않습니다. 그 부분은 로컬 PC에서
-fetch_macro_data.py를 실행했을 때만 갱신됩니다.
+과거에는 KOSIS·관세청 API가 한국 국내 IP에서만 접근된다고 보고 수출입 항목을
+로컬 PC에서만 갱신했지만, 2026-08 GitHub Actions 러너에서 직접 확인한 결과 두
+API 모두 해외 IP에서 정상 응답했습니다(HTTP 200, resultCode 00). 그래서 지금은
+수출 데이터도 이 스크립트가 자동으로 갱신합니다.
 
-즉 이 스크립트가 GitHub Actions에서 매달 자동으로 돌면서 CLI/금리/VIX/M2/
-WALCL/하이일드/KOSPI/나스닥/S&P500/MDD를 계속 최신으로 유지하고, 수출입 관련
-5개 차트만 로컬 PC를 켜서 한 번씩 돌려줘야 최신화됩니다.
-
-*** 로컬 PC에서는 이 파일 대신 fetch_macro_data.py(모든 지표를 다 가져오는
-    버전)를 계속 사용하세요. 이 파일은 GitHub Actions 전용입니다. ***
+품목 분류에 쓰는 HS코드는 기존 data.js 값을 그대로 재현하는지 검증해서 확정한
+것입니다(2026-03·2026-04 두 달에 대해 오차 0.00%). CATEGORY_HS 참고.
 
 필요한 환경변수 (GitHub 저장소 Settings > Secrets and variables > Actions):
-    FRED_API_KEY
+    FRED_API_KEY          (필수)
+    CUSTOMS_SERVICE_KEY   (선택 - 없으면 수출 항목은 기존 값을 그대로 보존)
 
 사용법 (GitHub Actions 워크플로우 안에서):
-    pip install requests yfinance pandas
+    pip install requests yfinance pandas holidays
     python fetch_macro_data_github.py
 """
 
+import calendar
 import json
 import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta
+import xml.etree.ElementTree as ET
+from datetime import date, datetime, timedelta
 
 import requests
 
@@ -49,6 +48,8 @@ def _required_env(name: str) -> str:
 
 
 FRED_API_KEY = _required_env("FRED_API_KEY")
+# 없으면 수출 항목만 기존 값을 보존하고 나머지는 정상 수집한다.
+CUSTOMS_SERVICE_KEY = os.environ.get("CUSTOMS_SERVICE_KEY", "")
 
 COUNTRIES = {
     "KOR": "한국", "USA": "미국", "CHN": "중국", "JPN": "일본", "DEU": "독일",
@@ -56,9 +57,24 @@ COUNTRIES = {
     "FRA": "프랑스", "ITA": "이탈리아", "ESP": "스페인", "IDN": "인도네시아",
 }
 
-# 로컬 스크립트와 카테고리 목록을 맞춰두기 위한 기본값(첫 실행 등, 기존
-# data.js에서 categories를 못 읽어왔을 때만 사용됨).
-DEFAULT_CATEGORIES = ["반도체", "자동차", "이차전지", "선박", "철강판재류"]
+# 품목별 수출액을 묶는 HS코드 접두사.
+# 기존 data.js(로컬 fetch_macro_data.py가 만든 값)를 그대로 재현하는지 2026-03·
+# 2026-04 두 달로 검증해 확정한 정의로, 두 달 모두 오차 0.00%로 일치했다.
+# 선박은 8901(여객선·화물선)만, 철강판재류는 7208(열연강판)만 잡히므로 실제
+# 업계 통계보다 과소집계된다 - 기존 시리즈와의 연속성을 위해 그대로 유지한다.
+CATEGORY_HS = {
+    "반도체": ("8542",),
+    "자동차": ("8703",),
+    "이차전지": ("8507",),
+    "선박": ("8901",),
+    "철강판재류": ("7208",),
+}
+DEFAULT_CATEGORIES = list(CATEGORY_HS)
+
+CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
+# 관세청은 잠정치를 뒤에 확정치로 개정하므로, 매 실행마다 최근 몇 달치를 다시
+# 받아 덮어쓴다. 그보다 오래된 달은 기존 값을 그대로 둔다.
+EXPORT_REFRESH_MONTHS = 6
 
 # FRED에서 가져올 미국 매크로 시리즈
 FRED_MACRO_SERIES = {
@@ -214,6 +230,130 @@ def fetch_yfinance_series(ticker: str, years_back: int):
     return out
 
 
+# ------------------------------------------------------------------
+# 관세청 품목별 수출입실적 -> 수출총액 / 품목별 수출액 / 1일평균 수출액
+# ------------------------------------------------------------------
+def korea_working_days(year: int, month: int):
+    """토·일요일과 한국 법정공휴일을 뺀 조업일수(추정).
+
+    기존 data.js의 1일평균 수출액 61개월치를 이 방식으로 전부 재현되는지
+    확인했고 61/61 모두 일치했으므로, 로컬 스크립트와 같은 계산이다.
+    """
+    import holidays
+
+    kr = holidays.KR(years=year)
+    days = calendar.monthrange(year, month)[1]
+    return sum(
+        1
+        for d in range(1, days + 1)
+        if date(year, month, d).weekday() < 5 and date(year, month, d) not in kr
+    )
+
+
+def fetch_customs_month(yymm: str):
+    """한 달치 전체 HS코드 수출실적을 받아 (총액USD, {품목: 금액USD})로 정리.
+
+    아직 발표 전인 달은 빈 응답이 오므로 None을 돌려준다.
+    """
+    res = requests.get(
+        CUSTOMS_URL,
+        params={
+            "serviceKey": CUSTOMS_SERVICE_KEY,
+            "strtYymm": yymm,
+            "endYymm": yymm,
+            "hsSgn": "",
+        },
+        timeout=120,
+    )
+    res.raise_for_status()
+    root = ET.fromstring(res.text)
+    code = root.findtext(".//resultCode")
+    if code not in (None, "00"):
+        print(f"    API 오류 resultCode={code} ({root.findtext('.//resultMsg')})")
+        return None
+
+    by_hs, total_row = {}, None
+    for item in root.findall(".//item"):
+        year = item.findtext("year")
+        hs = (item.findtext("hsCode") or "").strip()
+        try:
+            exp = float(item.findtext("expDlr") or 0)
+        except ValueError:
+            continue
+        if year == "총계":
+            total_row = exp
+        elif hs:
+            by_hs[hs] = exp
+
+    # 발표 전이면 품목이 거의 없거나 총액이 비정상적으로 작다. 한국 월 수출은
+    # 최근 기준 400억달러를 크게 웃돌므로 그 아래면 미발표/부분집계로 본다.
+    total = total_row if total_row is not None else sum(by_hs.values())
+    if len(by_hs) < 1000 or total < 2e10:
+        print(f"    {yymm}: 아직 미발표로 판단 (품목 {len(by_hs)}개, 총액 {total:,.0f}달러)")
+        return None
+
+    cats = {
+        cat: sum(v for hs, v in by_hs.items() if hs.startswith(prefixes))
+        for cat, prefixes in CATEGORY_HS.items()
+    }
+    return total, cats
+
+
+def update_export_data(existing):
+    """기존 수출 데이터에 최근 몇 달치를 관세청 API로 새로 받아 덮어쓴다."""
+    total_1000 = dict(existing.get("export_total_1000usd", {}))
+    daily_1000 = dict(existing.get("export_daily_avg_1000usd", {}))
+    products = {
+        cat: dict(existing.get("product_1000usd", {}).get(cat, {}))
+        for cat in CATEGORY_HS
+    }
+
+    if not CUSTOMS_SERVICE_KEY:
+        print("  CUSTOMS_SERVICE_KEY가 없어 수출 데이터는 기존 값을 그대로 둡니다.")
+    else:
+        now = datetime.now()
+        targets = []
+        y, m = now.year, now.month
+        for _ in range(EXPORT_REFRESH_MONTHS):
+            targets.append(f"{y:04d}{m:02d}")
+            m -= 1
+            if m == 0:
+                m, y = 12, y - 1
+        for yymm in sorted(targets):
+            print(f"  - {yymm}")
+            try:
+                got = fetch_customs_month(yymm)
+            except Exception as e:
+                print(f"    수집 실패({type(e).__name__}: {e}) - 기존 값 유지")
+                continue
+            if got is None:
+                continue
+            total_usd, cats = got
+            year, month = int(yymm[:4]), int(yymm[4:])
+            wd = korea_working_days(year, month)
+            total_1000[yymm] = round(total_usd / 1000, 1)
+            daily_1000[yymm] = round(total_usd / 1000 / wd, 1) if wd else None
+            for cat, val in cats.items():
+                products[cat][yymm] = val
+            print(
+                f"    총액 {total_usd/1e8:,.1f}억달러, 조업일수 {wd}일, "
+                f"반도체 {cats['반도체']/1e8:,.1f}억달러"
+            )
+            time.sleep(0.5)
+
+    months_sorted = sorted(total_1000)
+    if months_sorted:
+        print(f"  수출총액 보유 구간: {months_sorted[0]} ~ {months_sorted[-1]} ({len(months_sorted)}개월)")
+    product_months = sorted(set().union(*[set(v) for v in products.values()])) if products else []
+    return {
+        "export_total_1000usd": total_1000,
+        "export_daily_avg_1000usd": daily_1000,
+        "categories": DEFAULT_CATEGORIES,
+        "product_months": product_months,
+        "product_1000usd": products,
+    }
+
+
 def main():
     existing = load_existing_data()
 
@@ -222,14 +362,14 @@ def main():
     print(f"CLI 조회 기간: {months[0]} ~ {months[-1]} ({len(months)}개월, 10년)")
     print(f"일별 지표 조회 시작일: {daily_start} (10년)")
 
-    print("\n[1/4] FRED에서 OECD CLI 수집 중 (10년)...")
+    print("\n[1/5] FRED에서 OECD CLI 수집 중 (10년)...")
     cli = {}
     for code in COUNTRIES:
         print(f"  - {code}")
         cli[code] = fetch_fred_cli(code, CLI_MONTHS_BACK)
         time.sleep(0.2)
 
-    print("\n[2/4] FRED에서 미국 금리·M2·VIX·지수·하이일드 수집 중...")
+    print("\n[2/5] FRED에서 미국 금리·M2·VIX·지수·하이일드 수집 중...")
     # M2·산업생산·신규수주는 YoY를 계산해서 보여주는 지표라 12개월 전 값이 있어야
     # 첫 표시월부터 YoY가 그려진다. 다른 지표보다 13개월 더 과거부터 수집한다
     # (대시보드에서 YoY가 없는 앞쪽 구간은 잘라내고 표시).
@@ -241,13 +381,13 @@ def main():
         fred_macro[sid] = fetch_fred_series(sid, start_date=start)
         time.sleep(0.2)
 
-    print("\n[3/4] S&P500 / 나스닥 MDD 계산 중...")
+    print("\n[3/5] S&P500 / 나스닥 MDD 계산 중...")
     mdd = {
         "SP500": compute_mdd_series(fred_macro["SP500"]),
         "NASDAQCOM": compute_mdd_series(fred_macro["NASDAQCOM"]),
     }
 
-    print("\n[4/4] yfinance에서 KOSPI / KOSDAQ150 / SOX / VKOSPI 수집 중...")
+    print("\n[4/5] yfinance에서 KOSPI / KOSDAQ150 / SOX / VKOSPI 수집 중...")
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
     sox = fetch_yfinance_series("^SOX", DAILY_YEARS_BACK)
@@ -258,18 +398,15 @@ def main():
     if not vkospi:
         print("  ^VKOSPI: 야후 파이낸스에서 데이터를 가져오지 못했습니다 (티커 미지원 가능성).")
 
-    # KOSIS/관세청 관련 필드는 기존 data.js 값을 그대로 보존한다 (이 스크립트는
-    # 그 부분을 수집하지 않음. 로컬 PC의 fetch_macro_data.py가 담당).
+    print("\n[5/5] 관세청에서 수출총액·품목별 수출액 수집 중...")
+    exports = update_export_data(existing)
+
     data = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "months": months,
         "countries": COUNTRIES,
         "cli": cli,
-        "export_total_1000usd": existing.get("export_total_1000usd", {}),
-        "export_daily_avg_1000usd": existing.get("export_daily_avg_1000usd", {}),
-        "categories": existing.get("categories", DEFAULT_CATEGORIES),
-        "product_months": existing.get("product_months", []),
-        "product_1000usd": existing.get("product_1000usd", {}),
+        **exports,
         "fred_macro": fred_macro,
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
