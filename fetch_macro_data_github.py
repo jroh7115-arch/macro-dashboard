@@ -18,6 +18,7 @@ API 모두 해외 IP에서 정상 응답했습니다(HTTP 200, resultCode 00). �
     FRED_API_KEY          (필수)
     CUSTOMS_SERVICE_KEY   (선택 - 없으면 수출 항목은 기존 값을 그대로 보존)
     BOK_API_KEY           (선택 - 한국은행 ECOS. 없으면 한국 금리·물가·심리는 건너뜀)
+    KRX_API_KEY           (선택 - 한국거래소. 없으면 VKOSPI는 기존 값을 그대로 보존)
 
 사용법 (GitHub Actions 워크플로우 안에서):
     pip install requests yfinance pandas pdfplumber holidays==0.100
@@ -107,6 +108,77 @@ ECOS_SERIES = {
     "BSI_MFG": ("512Y007", "AA/C0000", "제조업 업황실적BSI"),
     "ESI": ("513Y001", "E2000", "경제심리지수(순환변동치)"),
 }
+
+# 한국거래소(KRX) 파생상품지수 일별시세. VKOSPI(코스피 200 변동성지수)는 야후
+# 파이낸스가 티커를 내려서(^VKOSPI 404) 무료로 받을 데가 여기뿐이다.
+# 이 API는 하루치씩만 주고 기간 조회가 없어서(strtDd/endDd 무시됨) 10년치를 채우려면
+# 2500번쯤 호출해야 한다. 그래서 없는 날짜만 골라 조금씩 채우고, 채운 값은 계속 보존한다.
+KRX_API_KEY = os.environ.get("KRX_API_KEY", "")
+KRX_IDX_URL = "https://data-dbg.krx.co.kr/svc/apis/idx/drvprod_dd_trd"
+KRX_VKOSPI_NAME = "코스피 200 변동성지수"
+# 정기 실행에서는 최근 며칠만 채우고, 최초 백필은 환경변수로 크게 준다.
+KRX_MAX_CALLS = int(os.environ.get("KRX_MAX_CALLS") or 15)
+KRX_YEARS_BACK = 10
+
+
+def fetch_krx_vkospi(existing: dict):
+    """KRX에서 VKOSPI 일별 종가를 받아 {YYYY-MM-DD: 값}로 돌려준다.
+
+    이미 받아둔 날짜는 건너뛴다. 휴장일은 None으로 저장해 두어 매번 다시
+    두드리지 않게 하되, 최근 7일은 아직 공표 전일 수 있으므로 None을 남기지 않는다.
+    """
+    out = dict(existing or {})
+    if not KRX_API_KEY:
+        print("  KRX_API_KEY가 없어 VKOSPI는 기존 값을 그대로 둡니다.")
+        return out
+
+    today = date.today()
+    start = today - timedelta(days=365 * KRX_YEARS_BACK)
+    targets = []
+    d = today
+    while d >= start:
+        if d.weekday() < 5 and d.isoformat() not in out:
+            targets.append(d)
+        d -= timedelta(days=1)
+
+    if not targets:
+        print(f"  VKOSPI: 새로 받을 날짜 없음 (보유 {len(out)}일)")
+        return out
+    print(f"  VKOSPI: 미보유 {len(targets)}일 중 이번 실행에서 {min(len(targets), KRX_MAX_CALLS)}일 조회")
+
+    fetched = fails = 0
+    for target in targets[:KRX_MAX_CALLS]:
+        key = target.isoformat()
+        try:
+            res = requests.get(
+                KRX_IDX_URL,
+                headers={"AUTH_KEY": KRX_API_KEY},
+                params={"basDd": target.strftime("%Y%m%d")},
+                timeout=(10, 60),
+            )
+            res.raise_for_status()
+            rows = res.json().get("OutBlock_1", []) or []
+        except Exception as e:
+            fails += 1
+            if fails >= 3:
+                print(f"    KRX 연속 실패({type(e).__name__}) - 이번 실행은 중단")
+                break
+            continue
+        hit = next((r for r in rows if r.get("IDX_NM") == KRX_VKOSPI_NAME), None)
+        if hit:
+            try:
+                out[key] = float(str(hit.get("CLSPRC_IDX")).replace(",", ""))
+                fetched += 1
+            except (TypeError, ValueError):
+                pass
+        elif (today - target).days > 7:
+            out[key] = None      # 휴장일로 확정 - 다시 조회하지 않는다
+        time.sleep(0.15)
+
+    valid = sum(1 for v in out.values() if v is not None)
+    print(f"    이번 실행 {fetched}일 수집 | 누적 유효 {valid}일")
+    return out
+
 
 CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 # 관세청은 잠정치를 뒤에 확정치로 개정하므로, 매 실행마다 최근 몇 달치를 다시
@@ -864,9 +936,9 @@ def main():
     mdd["KOSPI"] = compute_mdd_series(kospi)
     mdd["KOSDAQ150"] = compute_mdd_series(kosdaq150)
 
-    vkospi = fetch_yfinance_series("^VKOSPI", DAILY_YEARS_BACK)
-    if not vkospi:
-        print("  ^VKOSPI: 야후 파이낸스에서 데이터를 가져오지 못했습니다 (티커 미지원 가능성).")
+    # VKOSPI는 야후가 티커를 내려서 KRX에서 받는다(기존에 받아둔 값은 계속 보존)
+    print("  VKOSPI: 한국거래소(KRX)에서 수집")
+    vkospi = fetch_krx_vkospi(existing.get("vkospi", {}))
 
     print("\n[5/6] 한국은행 ECOS에서 국내 금리·물가·경기심리 수집 중...")
     bok = fetch_bok_series()

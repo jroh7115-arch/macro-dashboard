@@ -252,7 +252,7 @@
 
 <div class="chart-block">
   <h2>VIX 변동성지수 (미국) <span class="range" id="range-vixChart"></span></h2>
-  <p class="desc">S&P500 옵션 가격에서 역산한 미국 시장의 향후 30일 예상 변동성('공포지수')입니다. 통상 20 이하는 안정, 20~30은 경계, 30 이상은 시장이 불안·패닉에 가까운 상태로 해석합니다. 한국판 VIX인 VKOSPI도 함께 보여주려 했으나, 무료로 쓸 수 있는 데이터 소스(야후 파이낸스)가 이 지수를 제공하지 않아 VIX(미국)만 표시됩니다.</p>
+  <p class="desc">S&P500 옵션 가격에서 역산한 미국 시장의 향후 30일 예상 변동성('공포지수')입니다. 통상 20 이하는 안정, 20~30은 경계, 30 이상은 시장이 불안·패닉에 가까운 상태로 해석합니다. 함께 그린 VKOSPI는 코스피200 옵션에서 산출한 한국판 변동성지수로, 한국거래소(KRX)에서 받아옵니다. 두 지수를 같이 보면 불안이 미국발인지 국내발인지 구분할 수 있습니다. 다만 VKOSPI는 KRX 공표가 하루 이틀 늦어 VIX보다 최신 시점이 짧습니다.</p>
   <div class="chart-wrap"><canvas id="vixChart"></canvas></div>
   <div class="missing" id="vkospiMissingNote"></div>
   <div class="err" id="err-vixChart"></div>
@@ -301,7 +301,7 @@
   - 원/달러 환율(KRW=X), 달러인덱스(DX-Y.NYB, ICE), WTI 유가(CL=F): yfinance. 이전에는 FRED(연준 H.10·EIA)를 썼는데 이 계열은 주 1회 묶어서 공표해 최신값이 최대 일주일까지 묵은 값이 되기 때문에, 매일 갱신되는 시장 시세로 바꿨습니다. FRED 시리즈(DEXKOUS/DTWEXBGS/DCOILWTICO)도 data.js에 함께 보관합니다.<br>
   - 필라델피아 반도체지수(^SOX): yfinance(야후 파이낸스)<br>
   - 미국 산업생산(INDPRO), 핵심자본재 신규수주(NEWORDER), 필라델피아 연준 제조업지수(GACDFSA066MSFRBPHI), 뉴욕 연준 제조업지수(GACDISA066MSFRBNY): FRED. ISM 제조업 PMI는 유료 라이선스라 FRED에서 제공되지 않아 이 지표들로 대신합니다.<br>
-  - VKOSPI(한국 변동성지수): yfinance(^VKOSPI 티커)로 시도했으나, 야후 파이낸스가 이 티커를 지원하지 않아 확인 결과 데이터를 가져올 수 없었습니다. 그래서 VIX 차트에는 미국 VIX만 표시됩니다.<br>
+  - VKOSPI(코스피200 변동성지수): 한국거래소 파생상품지수 일별시세 API(data-dbg.krx.co.kr, 옵션지수 분류의 '코스피 200 변동성지수'). 야후 파이낸스는 ^VKOSPI 티커를 내려서(404) 쓸 수 없습니다. 이 API는 하루치씩만 조회되고 기간 조회가 없어, 없는 날짜만 조금씩 채워 넣는 방식으로 수집합니다.<br>
   - 하이일드 스프레드(BAMLH0A0HYM2, ICE BofA US High Yield OAS): FRED. FRED 정책상 최근 약 3년치만 제공되어 다른 일별 지표(10년)보다 기간이 짧습니다.<br>
   - 상단 신호등 기준값(참고용, 투자 신호 아님): CLI는 100 기준·전월차 방향, 금리차는 0%p 이상 양호·-0.3%p 미만 경계, VIX는 20 미만 양호·30 초과 경계, M2 YoY는 플러스 양호·-2% 미만 경계, 하이일드 스프레드는 4%p 미만 양호·6%p 초과 경계로 계산합니다.<br>
   - MDD 신호등만 "양호/주의/경계" 대신 "고점 근접/조정 진행중/큰 폭 조정"으로 다르게 표시합니다. 낙폭이 크다는 것 자체가 위험 신호는 아니고, 이미 상당폭 조정을 거쳐 오히려 저가 매수 구간일 수도 있기 때문에 중립적으로 국면만 알려주는 용도입니다. (기준: -10% 이내/​-10~-20%/​-20% 초과)<br>
@@ -1298,9 +1298,14 @@ safeChart('vixChart', () => {
     type: 'line',
     data: { labels: allDates, datasets: [
       { label: 'VIX(미국)', data: allDates.map(d => vixMap[d] !== undefined ? vixMap[d] : null), borderColor: '#C62828', fill: true, backgroundColor: 'rgba(198,40,40,0.08)', ...COMMON_LINE_OPTS },
-      { label: 'VKOSPI(한국)', data: allDates.map(d => vkospiMap[d] !== undefined ? vkospiMap[d] : null), borderColor: '#264478', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', ...COMMON_LINE_OPTS },
+      { label: 'VKOSPI(한국)', data: allDates.map(d => vkospiMap[d] !== undefined ? vkospiMap[d] : null), borderColor: '#264478', fill: true, backgroundColor: 'rgba(38,68,120,0.08)', yAxisID: 'y1', ...COMMON_LINE_OPTS },
     ]},
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { title: { display: true, text: 'Index' } } } }
+    // 두 지수는 산출 방식이 달라 절대 수준이 크게 차이 난다(2026-08 기준 VIX 15 vs
+    // VKOSPI 77). 같은 축에 두면 VIX가 바닥에 눌려 안 보이므로 축을 나눈다.
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: {
+      y: { position: 'left', title: { display: true, text: 'VIX(미국)', color: '#C62828' }, ticks: { color: '#C62828' } },
+      y1: { position: 'right', title: { display: true, text: 'VKOSPI(한국)', color: '#264478' }, ticks: { color: '#264478' }, grid: { drawOnChartArea: false } },
+    } }
   });
 });
 

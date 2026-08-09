@@ -38,6 +38,7 @@ jobs:
           CUSTOMS_SERVICE_KEY: ${{ secrets.CUSTOMS_SERVICE_KEY }}
           BACKFILL_PER_RUN: ${{ inputs.backfill }}
           BOK_API_KEY: ${{ secrets.BOK_API_KEY }}
+          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
         run: python fetch_macro_data_github.py
 
       - name: Commit and push data.js if it changed
