@@ -299,6 +299,37 @@ def fetch_customs_month(yymm: str):
     return total, cats
 
 
+def check_workday_consistency(total_1000, daily_1000, skip_months):
+    """기존 값에서 역산한 조업일수가 지금 계산한 값과 같은지 확인한다.
+
+    holidays 패키지 버전이 바뀌면 공휴일 판정이 달라져(실제로 0.101에서 근로자의
+    날이 추가됨) 새로 쓰는 달만 다른 기준으로 계산되고, 1일평균 수출액 그래프에
+    실제 수출과 무관한 단차가 생긴다. 갱신 대상이 아닌(=그대로 남는) 달들로
+    검증해 그런 어긋남을 조용히 넘어가지 않도록 한다.
+    """
+    mismatches = []
+    checked = 0
+    for ym in sorted(total_1000):
+        if ym in skip_months:
+            continue
+        total, avg = total_1000.get(ym), daily_1000.get(ym)
+        if not total or not avg:
+            continue
+        checked += 1
+        implied = round(total / avg)
+        calc = korea_working_days(int(ym[:4]), int(ym[4:]))
+        if implied != calc:
+            mismatches.append((ym, implied, calc))
+    if mismatches:
+        print(f"  [경고] 조업일수 계산이 기존 데이터 {len(mismatches)}개월과 어긋납니다:")
+        for ym, implied, calc in mismatches[:10]:
+            print(f"    {ym}: 기존 {implied}일 vs 지금 계산 {calc}일")
+        print("    -> holidays 패키지 버전이 바뀌었을 수 있습니다. 워크플로의 버전 고정을 "
+              "확인하세요. 이대로 두면 1일평균 수출액에 인위적인 단차가 생깁니다.")
+    else:
+        print(f"  조업일수 계산 검증: 기존 {checked}개월과 모두 일치")
+
+
 def update_export_data(existing):
     """기존 수출 데이터에 최근 몇 달치를 관세청 API로 새로 받아 덮어쓴다."""
     total_1000 = dict(existing.get("export_total_1000usd", {}))
@@ -319,6 +350,7 @@ def update_export_data(existing):
             m -= 1
             if m == 0:
                 m, y = 12, y - 1
+        check_workday_consistency(total_1000, daily_1000, set(targets))
         for yymm in sorted(targets):
             print(f"  - {yymm}")
             try:
