@@ -113,6 +113,7 @@
   <h2>주요 품목별 수출 비중 추이 (관세청 HS코드 기준) <span class="range" id="range-shareChart"></span></h2>
   <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.</p>
   <div class="chart-wrap"><canvas id="shareChart"></canvas></div>
+  <div class="missing" id="basisBackfillNote"></div>
   <div class="err" id="err-shareChart"></div>
 </div>
 
@@ -370,7 +371,14 @@ const expDailyYoy = expDailyVals.map((v,i) => {
 });
 
 // ================= 3. 품목 비중 & YoY =================
-const pMonths = D.product_months;
+// 품목 분류 기준을 바꾸면 과거 달은 관세청 API로 다시 받아야 하는데, 그 API가
+// 자주 끊겨 며칠에 걸쳐 조금씩 채워진다. 그동안 새 기준과 옛 기준이 섞이면
+// 그래프에 실제 수출과 무관한 단차가 생기므로, 아직 새 기준으로 못 받은 달은
+// 품목 차트에서 아예 빼고 그린다(백필이 끝나면 자동으로 다시 길어짐).
+const basisSet = new Set(D.product_basis_months || []);
+const pMonthsRaw = D.product_months || [];
+const pMonths = basisSet.size ? pMonthsRaw.filter(ym => basisSet.has(ym)) : pMonthsRaw;
+const pMonthsDropped = pMonthsRaw.length - pMonths.length;
 const cats = D.categories;
 const shareData = {};
 const catVals = {};
@@ -1173,6 +1181,11 @@ function buildPriceChart(canvasId, missingNoteId, label, series, color) {
 
 buildPriceChart('kospiPriceChart', 'kospiPriceMissingNote', 'KOSPI 종가', kospiPrice, palette[5]);
 buildPriceChart('sp500PriceChart', null, 'S&P500 종가', sp500Price, palette[0]);
+
+if (pMonthsDropped > 0) {
+  const el = document.getElementById('basisBackfillNote');
+  if (el) el.textContent = `참고: 반도체 분류를 산업통상자원부 기준(HS 8541+8542+8473)으로 바꾸면서 과거 ${pMonthsDropped}개월을 관세청 API로 다시 받는 중입니다. 아직 못 받은 달은 옛 기준과 섞여 가짜 단차가 생기므로 품목 차트에서 제외했고, 자동 갱신이 진행되면 다시 길어집니다.`;
+}
 
 safeChart('releaseTable', buildReleaseTable);
 </script>
