@@ -77,91 +77,7 @@
   <div id="releaseTable"></div>
 </div>
 
-<h3>1. 경기선행지수 (OECD CLI)</h3>
-
-<div class="chart-block">
-  <h2>OECD CLI: 한국 vs 주요국평균(13개국) <span class="range" id="range-cliChart"></span></h2>
-  <p class="desc">OECD 경기선행지수(CLI)는 향후 6~9개월의 경기 방향을 미리 보여주는 지표입니다. 100을 기준으로 위면 경기 확장 국면, 아래면 위축 국면을 의미하고, 전월 대비 방향(우측 축)이 오르는지 꺾이는지가 국면 전환의 신호입니다.</p>
-  <div class="chart-wrap"><canvas id="cliChart"></canvas></div>
-  <div class="err" id="err-cliChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>국가별 OECD CLI 레벨 요약표 (최신 2개월) <span class="range" id="range-cliTable"></span></h2>
-  <p class="desc">13개국 각각의 전월·이번월 CLI 레벨과 전월차, 그리고 국면 해석을 정리한 표입니다. 국가별로 최신 발표월이 다를 수 있어 "이번월" 기준 시점이 나라마다 다를 수 있습니다. 해석은 이 대시보드가 레벨(100 기준)과 전월차(방향) 두 값으로 자동 분류한 것으로, OECD 공식 해석이 아닙니다.</p>
-  <div id="cliTable"></div>
-</div>
-
-<div class="chart-block">
-  <h2>주요국 CLI 전월차 비교 (13개국 평균 · 한국 · 미국 · 중국) <span class="range" id="range-cliCountryMomChart"></span></h2>
-  <p class="desc">국가별 CLI가 전월 대비 얼마나 움직였는지를 비교하는 차트입니다. 여러 나라가 동시에 0선 위로 올라오면 글로벌 경기 모멘텀이 함께 개선되는 국면이고, 반대로 흩어져 움직이면 국가별 경기 사이클이 어긋나 있다는 뜻입니다. 2020년 코로나 시기의 급등락은 평상시 변동폭을 가리지 않도록 축 범위를 잘라냈습니다(값 자체는 원본 그대로이며, 그래프 밖으로 벗어나는 지점만 시각적으로 잘립니다).</p>
-  <div class="chart-wrap"><canvas id="cliCountryMomChart"></canvas></div>
-  <div class="err" id="err-cliCountryMomChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>글로벌 경기 확산지수 (13개국 기준) <span class="range" id="range-diffusionChart"></span></h2>
-  <p class="desc">13개국 중 CLI가 100을 넘는 나라의 비율(레벨 확산)과 전월보다 개선된 나라의 비율(모멘텀 확산)입니다. 두 지표 모두 50%를 밑돌기 시작하면 경기 확장의 폭이 좁아지고 있다는 뜻이고, 개별국 CLI가 좋아도 이 비율이 낮으면 글로벌 동반 회복은 아니라는 의미입니다.</p>
-  <div class="chart-wrap"><canvas id="diffusionChart"></canvas></div>
-  <div class="err" id="err-diffusionChart"></div>
-</div>
-
-<h3>2. 수출입</h3>
-
-<div class="chart-block">
-  <h2>한국 월별 수출총액(KOSIS) 및 전년동월대비 증감률 <span class="range" id="range-exportChart"></span></h2>
-  <p class="desc">막대는 월별 수출총액(억달러), 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. 막대 색으로 확정 단계를 구분합니다 — <strong>주황 막대</strong>는 산업통상자원부 속보치(익월 1일 발표, 총액만 있고 품목별은 없음), <strong>옅은 파랑</strong>은 관세청 확정치지만 아직 개정될 수 있는 최근 2개월(2026-05 총액은 실제로 0.27% 조정됐습니다), <strong>진한 파랑</strong>은 개정이 사실상 끝난 달입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
-  <div class="chart-wrap"><canvas id="exportChart"></canvas></div>
-  <div class="err" id="err-exportChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>한국 월별 1일평균 수출액(추정) <span class="range" id="range-exportDailyChart"></span></h2>
-  <p class="desc">월 수출총액을 조업일수로 나눈 값입니다. 총액 차트와 같은 색 구분을 씁니다(주황=속보치, 옅은 파랑=개정 가능, 진한 파랑=확정). 조업일수가 월마다 다르기 때문에, 총액만 보면 조업일수가 많았던 달이 실제 수출 활력보다 좋아 보일 수 있는데 이 지표는 그 효과를 제거해줍니다. 꺾은선은 1일평균 수출액의 전년동월대비 증감률(YoY)로, 조업일수 효과를 뺀 순수한 수출 활력의 연간 변화를 보여줍니다. 조업일수는 관세청·산업통상자원부와 같은 기준(평일에서 법정공휴일과 근로자의 날을 빼고, 토요일은 0.5일로 계산)으로 산출해 산업부 '수출입 동향'이 발표하는 일평균 수출액과 맞춰져 있습니다.</p>
-  <div class="chart-wrap"><canvas id="exportDailyChart"></canvas></div>
-  <div class="err" id="err-exportDailyChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>월중 조기 수출지표: 1~10일 · 1~20일 누적 수출 YoY <span class="range" id="range-tenDayChart"></span></h2>
-  <p class="desc">관세청은 매월 11일에 1~10일 누적, 21일에 1~20일 누적 수출액을 잠정치로 발표합니다. 월간 수출이 확정되기 훨씬 전에 그 달의 방향을 볼 수 있는 지표로, 각 구간을 <strong>전년 같은 구간과 비교한 증감률</strong>입니다. 세 선이 비슷하게 움직이면 월중 흐름이 일정하다는 뜻이고, 1~10일과 1~20일이 월 전체보다 먼저 꺾이면 월 후반 둔화를 미리 시사합니다. 조업일수 차이가 보정되지 않아 구간별로 편차가 있을 수 있습니다.</p>
-  <div class="chart-wrap"><canvas id="tenDayChart"></canvas></div>
-  <div class="missing" id="tenDayMissingNote"></div>
-  <div class="err" id="err-tenDayChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>반도체 1일평균 수출액(EPS proxy) <span class="range" id="range-semiProxyChart"></span></h2>
-  <p class="desc">1일평균 수출액에 반도체 비중을 곱한 값으로, 조업일수 효과를 제거한 반도체 수출의 하루치 규모입니다. 반도체 이익 사이클을 총액보다 직접적으로 반영해 삼성전자·SK하이닉스 등 반도체 밸류체인의 이익 방향을 가늠하는 대용지표(proxy)로 쓰입니다. 꺾은선은 전년동월대비 증감률로, 레벨이 높게 유지되는지(고점 유지)와 더 가팔라지는지(재가속)를 구분해 보는 데 씁니다.</p>
-  <div class="chart-wrap"><canvas id="semiProxyChart"></canvas></div>
-  <div class="missing" id="semiProxyMissingNote"></div>
-  <div class="err" id="err-semiProxyChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>주요 품목별 수출 비중 추이 (관세청 HS코드 기준) <span class="range" id="range-shareChart"></span></h2>
-  <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.<br>마름모(◇)로 찍힌 마지막 점은 <strong>산업부 속보치</strong>로, 관세청 확정치가 나오기 전 값입니다(익월 15일경 확정치로 대체됨).</p>
-  <div id="categoryTable"></div>
-  <div class="chart-wrap"><canvas id="shareChart"></canvas></div>
-  <div class="missing" id="basisBackfillNote"></div>
-  <div class="err" id="err-shareChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>주요 품목별 수출액 (억달러) <span class="range" id="range-amountChart"></span></h2>
-  <p class="desc">비중이 아니라 <strong>절대 금액</strong>입니다. 비중은 다른 품목이 줄어도 올라가기 때문에, 실제로 그 품목이 커지고 있는지는 금액으로 봐야 합니다. 예를 들어 반도체 비중이 오르는 동안 자동차 금액이 그대로면 비중 하락은 자동차 부진이 아니라 반도체 급증 때문입니다. 마름모(◇) 점은 산업부 속보치입니다.</p>
-  <div class="chart-wrap"><canvas id="amountChart"></canvas></div>
-  <div class="err" id="err-amountChart"></div>
-</div>
-
-<div class="chart-block">
-  <h2>주요 품목별 수출 전년동월대비 증감률(YoY, %) <span class="range" id="range-shareYoyChart"></span></h2>
-  <p class="desc">품목별 수출액 자체의 전년동월대비 증감률입니다. 비중 차트가 '전체에서 얼마나 큰가'를 보여준다면, 이 차트는 '그 품목 자체가 얼마나 빠르게 크고 있는가(혹은 줄고 있는가)'를 보여줍니다. 둘을 같이 보면 비중 확대가 실제 성장 때문인지, 다른 품목이 줄어서 상대적으로 커 보이는 것인지 구분할 수 있습니다.</p>
-  <div class="chart-wrap"><canvas id="shareYoyChart"></canvas></div>
-  <div class="err" id="err-shareYoyChart"></div>
-</div>
-
-<h3>3. 주가 · 지수 (일별)</h3>
+<h3>1. 주가 · 지수 (일별)</h3>
 
 <div class="chart-block">
   <h2>KOSPI 지수 종가 <span class="range" id="range-kospiPriceChart"></span></h2>
@@ -223,7 +139,91 @@
   <div class="err" id="err-mddChartUS"></div>
 </div>
 
-<h3>4. 수급 (투자자별 순매수)</h3>
+<h3>2. 경기선행지수 (OECD CLI)</h3>
+
+<div class="chart-block">
+  <h2>OECD CLI: 한국 vs 주요국평균(13개국) <span class="range" id="range-cliChart"></span></h2>
+  <p class="desc">OECD 경기선행지수(CLI)는 향후 6~9개월의 경기 방향을 미리 보여주는 지표입니다. 100을 기준으로 위면 경기 확장 국면, 아래면 위축 국면을 의미하고, 전월 대비 방향(우측 축)이 오르는지 꺾이는지가 국면 전환의 신호입니다.</p>
+  <div class="chart-wrap"><canvas id="cliChart"></canvas></div>
+  <div class="err" id="err-cliChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>국가별 OECD CLI 레벨 요약표 (최신 2개월) <span class="range" id="range-cliTable"></span></h2>
+  <p class="desc">13개국 각각의 전월·이번월 CLI 레벨과 전월차, 그리고 국면 해석을 정리한 표입니다. 국가별로 최신 발표월이 다를 수 있어 "이번월" 기준 시점이 나라마다 다를 수 있습니다. 해석은 이 대시보드가 레벨(100 기준)과 전월차(방향) 두 값으로 자동 분류한 것으로, OECD 공식 해석이 아닙니다.</p>
+  <div id="cliTable"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요국 CLI 전월차 비교 (13개국 평균 · 한국 · 미국 · 중국) <span class="range" id="range-cliCountryMomChart"></span></h2>
+  <p class="desc">국가별 CLI가 전월 대비 얼마나 움직였는지를 비교하는 차트입니다. 여러 나라가 동시에 0선 위로 올라오면 글로벌 경기 모멘텀이 함께 개선되는 국면이고, 반대로 흩어져 움직이면 국가별 경기 사이클이 어긋나 있다는 뜻입니다. 2020년 코로나 시기의 급등락은 평상시 변동폭을 가리지 않도록 축 범위를 잘라냈습니다(값 자체는 원본 그대로이며, 그래프 밖으로 벗어나는 지점만 시각적으로 잘립니다).</p>
+  <div class="chart-wrap"><canvas id="cliCountryMomChart"></canvas></div>
+  <div class="err" id="err-cliCountryMomChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>글로벌 경기 확산지수 (13개국 기준) <span class="range" id="range-diffusionChart"></span></h2>
+  <p class="desc">13개국 중 CLI가 100을 넘는 나라의 비율(레벨 확산)과 전월보다 개선된 나라의 비율(모멘텀 확산)입니다. 두 지표 모두 50%를 밑돌기 시작하면 경기 확장의 폭이 좁아지고 있다는 뜻이고, 개별국 CLI가 좋아도 이 비율이 낮으면 글로벌 동반 회복은 아니라는 의미입니다.</p>
+  <div class="chart-wrap"><canvas id="diffusionChart"></canvas></div>
+  <div class="err" id="err-diffusionChart"></div>
+</div>
+
+<h3>3. 수출입</h3>
+
+<div class="chart-block">
+  <h2>한국 월별 수출총액(KOSIS) 및 전년동월대비 증감률 <span class="range" id="range-exportChart"></span></h2>
+  <p class="desc">막대는 월별 수출총액(억달러), 꺾은선은 전년 같은 달 대비 증감률(YoY)입니다. 막대 색으로 확정 단계를 구분합니다 — <strong>주황 막대</strong>는 산업통상자원부 속보치(익월 1일 발표, 총액만 있고 품목별은 없음), <strong>옅은 파랑</strong>은 관세청 확정치지만 아직 개정될 수 있는 최근 2개월(2026-05 총액은 실제로 0.27% 조정됐습니다), <strong>진한 파랑</strong>은 개정이 사실상 끝난 달입니다. YoY가 반복적으로 플러스면 수출 사이클이 확장 국면에 있다고 볼 수 있고, 기저효과(전년 동월이 유난히 낮았거나 높았던 경우)는 감안해서 봐야 합니다.</p>
+  <div class="chart-wrap"><canvas id="exportChart"></canvas></div>
+  <div class="err" id="err-exportChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>한국 월별 1일평균 수출액(추정) <span class="range" id="range-exportDailyChart"></span></h2>
+  <p class="desc">월 수출총액을 조업일수로 나눈 값입니다. 총액 차트와 같은 색 구분을 씁니다(주황=속보치, 옅은 파랑=개정 가능, 진한 파랑=확정). 조업일수가 월마다 다르기 때문에, 총액만 보면 조업일수가 많았던 달이 실제 수출 활력보다 좋아 보일 수 있는데 이 지표는 그 효과를 제거해줍니다. 꺾은선은 1일평균 수출액의 전년동월대비 증감률(YoY)로, 조업일수 효과를 뺀 순수한 수출 활력의 연간 변화를 보여줍니다. 조업일수는 관세청·산업통상자원부와 같은 기준(평일에서 법정공휴일과 근로자의 날을 빼고, 토요일은 0.5일로 계산)으로 산출해 산업부 '수출입 동향'이 발표하는 일평균 수출액과 맞춰져 있습니다.</p>
+  <div class="chart-wrap"><canvas id="exportDailyChart"></canvas></div>
+  <div class="err" id="err-exportDailyChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>월중 조기 수출지표: 1~10일 · 1~20일 누적 수출 YoY <span class="range" id="range-tenDayChart"></span></h2>
+  <p class="desc">관세청은 매월 11일에 1~10일 누적, 21일에 1~20일 누적 수출액을 잠정치로 발표합니다. 월간 수출이 확정되기 훨씬 전에 그 달의 방향을 볼 수 있는 지표로, 각 구간을 <strong>전년 같은 구간과 비교한 증감률</strong>입니다. 세 선이 비슷하게 움직이면 월중 흐름이 일정하다는 뜻이고, 1~10일과 1~20일이 월 전체보다 먼저 꺾이면 월 후반 둔화를 미리 시사합니다. 조업일수 차이가 보정되지 않아 구간별로 편차가 있을 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="tenDayChart"></canvas></div>
+  <div class="missing" id="tenDayMissingNote"></div>
+  <div class="err" id="err-tenDayChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>반도체 1일평균 수출액(EPS proxy) <span class="range" id="range-semiProxyChart"></span></h2>
+  <p class="desc">1일평균 수출액에 반도체 비중을 곱한 값으로, 조업일수 효과를 제거한 반도체 수출의 하루치 규모입니다. 반도체 이익 사이클을 총액보다 직접적으로 반영해 삼성전자·SK하이닉스 등 반도체 밸류체인의 이익 방향을 가늠하는 대용지표(proxy)로 쓰입니다. 꺾은선은 전년동월대비 증감률로, 레벨이 높게 유지되는지(고점 유지)와 더 가팔라지는지(재가속)를 구분해 보는 데 씁니다.</p>
+  <div class="chart-wrap"><canvas id="semiProxyChart"></canvas></div>
+  <div class="missing" id="semiProxyMissingNote"></div>
+  <div class="err" id="err-semiProxyChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 품목별 수출 비중 추이 (관세청 HS코드 기준) <span class="range" id="range-shareChart"></span></h2>
+  <p class="desc">각 품목이 전체 수출에서 차지하는 비중(%)입니다. 반도체처럼 비중이 계속 커지는 품목은 수출 전체가 그 품목 하나의 사이클에 더 크게 의존하게 된다는 뜻이라, 쏠림이 심해질수록 그 품목의 업황이 곧 한국 수출 전체의 방향을 좌우하게 됩니다.<br>마름모(◇)로 찍힌 마지막 점은 <strong>산업부 속보치</strong>로, 관세청 확정치가 나오기 전 값입니다(익월 15일경 확정치로 대체됨).</p>
+  <div id="categoryTable"></div>
+  <div class="chart-wrap"><canvas id="shareChart"></canvas></div>
+  <div class="missing" id="basisBackfillNote"></div>
+  <div class="err" id="err-shareChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 품목별 수출액 (억달러) <span class="range" id="range-amountChart"></span></h2>
+  <p class="desc">비중이 아니라 <strong>절대 금액</strong>입니다. 비중은 다른 품목이 줄어도 올라가기 때문에, 실제로 그 품목이 커지고 있는지는 금액으로 봐야 합니다. 예를 들어 반도체 비중이 오르는 동안 자동차 금액이 그대로면 비중 하락은 자동차 부진이 아니라 반도체 급증 때문입니다. 마름모(◇) 점은 산업부 속보치입니다.</p>
+  <div class="chart-wrap"><canvas id="amountChart"></canvas></div>
+  <div class="err" id="err-amountChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>주요 품목별 수출 전년동월대비 증감률(YoY, %) <span class="range" id="range-shareYoyChart"></span></h2>
+  <p class="desc">품목별 수출액 자체의 전년동월대비 증감률입니다. 비중 차트가 '전체에서 얼마나 큰가'를 보여준다면, 이 차트는 '그 품목 자체가 얼마나 빠르게 크고 있는가(혹은 줄고 있는가)'를 보여줍니다. 둘을 같이 보면 비중 확대가 실제 성장 때문인지, 다른 품목이 줄어서 상대적으로 커 보이는 것인지 구분할 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="shareYoyChart"></canvas></div>
+  <div class="err" id="err-shareYoyChart"></div>
+</div>
+
+<h3>기타 1. 수급 (투자자별 순매수)</h3>
 
 <div class="chart-block">
   <h2>투자자별 순매수 20일 누적 (코스피) <span class="range" id="range-flowKospiChart"></span></h2>
@@ -249,7 +249,7 @@
   <div class="err" id="err-flowMonthlyChart"></div>
 </div>
 
-<h3>부가지표 1. 한국 금리 · 물가 · 경기심리</h3>
+<h3>기타 2. 한국 금리 · 물가 · 경기심리</h3>
 
 <div class="chart-block">
   <h2>한국 국고채 금리 (10년 · 3년) <span class="range" id="range-ktbChart"></span></h2>
@@ -275,7 +275,7 @@
   <div class="err" id="err-sentimentChart"></div>
 </div>
 
-<h3>부가지표 2. 미국 금리 · 유동성</h3>
+<h3>기타 3. 미국 금리 · 유동성</h3>
 
 <div class="chart-block">
   <h2>미국 국채 10년물·2년물 금리 및 장단기 금리차(10Y-2Y) <span class="range" id="range-ratesChart"></span></h2>
@@ -305,7 +305,7 @@
   <div class="err" id="err-hySpreadChart"></div>
 </div>
 
-<h3>부가지표 3. 환율 · 원자재</h3>
+<h3>기타 4. 환율 · 원자재</h3>
 
 <div class="chart-block">
   <h2>원/달러 환율 및 달러인덱스 <span class="range" id="range-fxChart"></span></h2>
@@ -323,7 +323,7 @@
   <div class="err" id="err-wtiChart"></div>
 </div>
 
-<h3>부가지표 4. 미국 실물경기 · 제조업 (PMI 대용)</h3>
+<h3>기타 5. 미국 실물경기 · 제조업 (PMI 대용)</h3>
 
 <div class="chart-block">
   <h2>연준 제조업 서베이: 필라델피아 · 뉴욕(엠파이어스테이트) <span class="range" id="range-fedSurveyChart"></span></h2>
@@ -349,7 +349,7 @@
   <div class="err" id="err-capexChart"></div>
 </div>
 
-<h3>부가지표 5. 변동성 (VIX · VKOSPI)</h3>
+<h3>기타 6. 변동성 (VIX · VKOSPI)</h3>
 
 <div class="chart-block">
   <h2>VIX 변동성지수 (미국) <span class="range" id="range-vixChart"></span></h2>
