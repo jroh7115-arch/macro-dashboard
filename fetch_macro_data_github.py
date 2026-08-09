@@ -74,7 +74,9 @@ DEFAULT_CATEGORIES = list(CATEGORY_HS)
 CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 # 관세청은 잠정치를 뒤에 확정치로 개정하므로, 매 실행마다 최근 몇 달치를 다시
 # 받아 덮어쓴다. 그보다 오래된 달은 기존 값을 그대로 둔다.
-EXPORT_REFRESH_MONTHS = 6
+# 한 달치 응답이 2MB가 넘고 이 API가 간헐적으로 접속을 거부하기 때문에, 개정이
+# 실제로 일어나는 최근 3개월만 다시 받아 서버 부담을 줄인다.
+EXPORT_REFRESH_MONTHS = 3
 
 # FRED에서 가져올 미국 매크로 시리즈
 FRED_MACRO_SERIES = {
@@ -367,12 +369,18 @@ def update_export_data(existing):
             if m == 0:
                 m, y = 12, y - 1
         consistent = check_workday_consistency(total_1000, daily_1000, set(targets))
+        failures = 0
         for yymm in sorted(targets):
+            if failures >= 2:
+                print(f"  - {yymm}: 관세청 API가 응답하지 않아 이번 실행은 건너뜁니다 (기존 값 유지)")
+                continue
             print(f"  - {yymm}")
             try:
                 got = fetch_customs_month(yymm)
             except Exception as e:
-                print(f"    수집 실패({type(e).__name__}: {e}) - 기존 값 유지")
+                # 서버가 죽어 있으면 남은 달도 마찬가지라 계속 두드리지 않는다.
+                failures += 1
+                print(f"    수집 실패({type(e).__name__}) - 기존 값 유지")
                 continue
             if got is None:
                 continue
