@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <title>한국 매크로 수출·경기선행·시장심리 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="data.js"></script>
+<!-- data.js는 하루 두 번 바뀌는데 GitHub Pages가 10분간 캐시해 새로고침해도 옛 데이터가
+     보이는 일이 잦았다. 캐시를 우회하도록 매 로드마다 다른 쿼리를 붙여 받아온다.
+     (Ctrl+F5 없이도 항상 최신 data.js를 읽게 하는 목적) -->
+<script>
+  document.write('<script src="data.js?t=' + Date.now() + '"><\/script>');
+</script>
 <style>
   body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; margin: 0; padding: 24px; background: #f5f6f8; color: #222; }
   h1 { font-size: 22px; margin-bottom: 4px; }
