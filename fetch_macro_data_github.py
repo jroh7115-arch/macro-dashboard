@@ -19,6 +19,8 @@ API 모두 해외 IP에서 정상 응답했습니다(HTTP 200, resultCode 00). �
     CUSTOMS_SERVICE_KEY   (선택 - 없으면 수출 항목은 기존 값을 그대로 보존)
     BOK_API_KEY           (선택 - 한국은행 ECOS. 없으면 한국 금리·물가·심리는 건너뜀)
     KRX_API_KEY           (선택 - 한국거래소. 없으면 VKOSPI는 기존 값을 그대로 보존)
+    KIS_APP_KEY / KIS_APP_SECRET
+                          (선택 - 한국투자증권. 없으면 투자자별 일별 수급을 건너뜀)
 
 사용법 (GitHub Actions 워크플로우 안에서):
     pip install requests yfinance pandas pdfplumber holidays==0.100
@@ -481,6 +483,87 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
 # 응답도 500바이트대라 가볍고 기존 키로 그대로 인증된다. 그래서 속보 총액은
 # 이 API에서 받고, 실패할 때만 KDI 스크래핑으로 넘어간다.
 CUSTOMS_TOTAL_URL = "https://apis.data.go.kr/1220000/Newtrade/getNewtradeList"
+
+
+# 한국투자증권(KIS) OpenAPI. 투자자별 일별 수급은 ECOS가 외국인만 주는데, 여기는
+# 기관·개인·외국인을 시장별로 다 준다(한 번 호출에 300거래일).
+# 단위는 백만원. ECOS 값과 대조해 0.5% 이내로 일치하는 것을 확인했다.
+KIS_APP_KEY = os.environ.get("KIS_APP_KEY", "")
+KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
+KIS_BASE = os.environ.get("KIS_URL_BASE", "https://openapi.koreainvestment.com:9443")
+KIS_FLOW_PATH = "/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market"
+KIS_MARKETS = {
+    "KOSPI": ("0001", "KSP", "0001"),
+    "KOSDAQ": ("1001", "KSQ", "1001"),
+}
+
+
+def fetch_kis_flows():
+    """KIS에서 시장별 일별 투자자 순매수(백만원)를 받아온다.
+
+    {시장: {YYYY-MM-DD: {"기관":.., "개인":.., "외국인":..}}}
+    """
+    if not (KIS_APP_KEY and KIS_APP_SECRET):
+        print("  KIS 키가 없어 투자자별 일별 수급은 건너뜁니다.")
+        return {}
+    try:
+        res = requests.post(
+            f"{KIS_BASE}/oauth2/tokenP",
+            json={"grant_type": "client_credentials",
+                  "appkey": KIS_APP_KEY, "appsecret": KIS_APP_SECRET},
+            timeout=30,
+        )
+        token = res.json().get("access_token")
+        if not token:
+            # 접근토큰은 1분당 1회만 발급된다. 실패해도 나머지 수집은 계속한다.
+            print(f"  KIS 토큰 발급 실패: {str(res.json())[:100]}")
+            return {}
+    except Exception as e:
+        print(f"  KIS 토큰 요청 실패({type(e).__name__})")
+        return {}
+
+    headers = {
+        "authorization": f"Bearer {token}",
+        "appkey": KIS_APP_KEY,
+        "appsecret": KIS_APP_SECRET,
+        "content-type": "application/json; charset=utf-8",
+        "tr_id": "FHPTJ04040000",
+    }
+    today = datetime.now().strftime("%Y%m%d")
+    out = {}
+    for market, (iscd, iscd1, iscd2) in KIS_MARKETS.items():
+        try:
+            r = requests.get(
+                KIS_BASE + KIS_FLOW_PATH, headers=headers,
+                params={"FID_COND_MRKT_DIV_CODE": "U", "FID_INPUT_ISCD": iscd,
+                        "FID_INPUT_ISCD_1": iscd1, "FID_INPUT_ISCD_2": iscd2,
+                        "FID_INPUT_DATE_1": today, "FID_INPUT_DATE_2": today},
+                timeout=40,
+            )
+            rows = r.json().get("output") or []
+        except Exception as e:
+            print(f"  KIS {market} 조회 실패({type(e).__name__})")
+            continue
+        vals = {}
+        for row in rows:
+            d = row.get("stck_bsop_date")
+            if not d or len(d) != 8:
+                continue
+            try:
+                vals[f"{d[:4]}-{d[4:6]}-{d[6:]}"] = {
+                    "기관": float(row.get("orgn_ntby_tr_pbmn") or 0),
+                    "개인": float(row.get("prsn_ntby_tr_pbmn") or 0),
+                    "외국인": float(row.get("frgn_ntby_tr_pbmn") or 0),
+                }
+            except (TypeError, ValueError):
+                continue
+        if vals:
+            out[market] = vals
+            latest = max(vals)
+            print(f"  - {market}: {len(vals)}거래일 (최신 {latest}, "
+                  f"외국인 {vals[latest]['외국인']/100:,.0f}억원)")
+        time.sleep(0.3)
+    return out
 
 
 def fetch_bok_series():
@@ -956,6 +1039,9 @@ def main():
     print("\n[5/6] 한국은행 ECOS에서 국내 금리·물가·경기심리 수집 중...")
     bok = fetch_bok_series()
 
+    print("  투자자별 일별 수급(한국투자증권)")
+    kis_flows = fetch_kis_flows()
+
     print("\n[6/6] 관세청에서 수출총액·품목별 수출액 수집 중...")
     exports = update_export_data(existing)
 
@@ -969,6 +1055,7 @@ def main():
         # 매일 갱신되는 시장 시세 (환율·달러인덱스·유가)
         "market_daily": {"USDKRW": usdkrw, "DXY": dxy, "WTI": wti},
         "bok": bok,
+        "kis_flows": kis_flows,
         "vkospi": vkospi,
         "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
                      "KOSPI": kospi, "KOSDAQ150": kosdaq150, "SOX": sox},
