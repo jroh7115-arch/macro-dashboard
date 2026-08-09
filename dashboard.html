@@ -325,6 +325,20 @@
   <div class="err" id="err-sp500PriceChart"></div>
 </div>
 
+<div class="chart-block">
+  <h2>KOSPI 이격도 (20 · 60 · 120일) <span class="range" id="range-kospiDispChart"></span></h2>
+  <p class="desc">이격도는 종가가 이동평균선에서 얼마나 떨어져 있는지를 백분율로 나타낸 값(종가 ÷ 이동평균 × 100)입니다. 100이면 이동평균선과 같은 위치, 100보다 크면 그 위, 작으면 아래입니다. 단기(20일)는 과열·침체를 빠르게 잡아내고 장기(120일)는 추세의 위치를 보여줍니다. 통상 20일 이격도가 105를 넘으면 단기 과열, 95를 밑돌면 단기 침체로 보지만 시장·국면마다 적정 범위가 다르므로 절대 기준은 아닙니다.</p>
+  <div class="chart-wrap"><canvas id="kospiDispChart"></canvas></div>
+  <div class="err" id="err-kospiDispChart"></div>
+</div>
+
+<div class="chart-block">
+  <h2>S&P500 이격도 (20 · 60 · 120일) <span class="range" id="range-sp500DispChart"></span></h2>
+  <p class="desc">같은 방식으로 계산한 S&P500 이격도입니다. KOSPI 이격도와 같이 보면 한쪽만 과열인지 두 시장이 함께 움직이는지 구분할 수 있습니다.</p>
+  <div class="chart-wrap"><canvas id="sp500DispChart"></canvas></div>
+  <div class="err" id="err-sp500DispChart"></div>
+</div>
+
 <div class="notes">
   <strong>데이터 출처 및 한계</strong><br>
   - CLI: FRED(api.stlouisfed.org), OECD Composite Leading Indicator, Amplitude Adjusted<br>
@@ -340,7 +354,7 @@
   - 상단 신호등 기준값(참고용, 투자 신호 아님): CLI는 100 기준·전월차 방향, 금리차는 0%p 이상 양호·-0.3%p 미만 경계, VIX는 20 미만 양호·30 초과 경계, M2 YoY는 플러스 양호·-2% 미만 경계, 하이일드 스프레드는 4%p 미만 양호·6%p 초과 경계로 계산합니다.<br>
   - MDD 신호등만 "양호/주의/경계" 대신 "고점 근접/조정 진행중/큰 폭 조정"으로 다르게 표시합니다. 낙폭이 크다는 것 자체가 위험 신호는 아니고, 이미 상당폭 조정을 거쳐 오히려 저가 매수 구간일 수도 있기 때문에 중립적으로 국면만 알려주는 용도입니다. (기준: -10% 이내/​-10~-20%/​-20% 초과)<br>
   - KOSPI / KOSDAQ150: yfinance(야후 파이낸스). KOSDAQ150은 정확한 지수 티커가 아니라 추종 ETF(KODEX 코스닥150, 229200.KS)로 근사한 값입니다.<br>
-  - MDD는 조회 기간 내 롤링 최고가 대비 현재가의 낙폭(%)입니다. 조회 시작 시점 이전 고점은 반영되지 않습니다.<br>
+  - 이동평균선(20·60·120일)과 이격도는 이 페이지가 일별 종가로 직접 계산합니다. 휴장일 결측은 건너뛰고 유효한 종가 n개로 계산하므로, 달력 기준이 아니라 거래일 기준입니다.<br>  - MDD는 조회 기간 내 롤링 최고가 대비 현재가의 낙폭(%)입니다. 조회 시작 시점 이전 고점은 반영되지 않습니다.<br>
   - 금리/VIX/지수 등 일별 시리즈는 휴장일에 값이 비어(".") 있을 수 있어 그래프에서 해당 구간을 이어 그립니다(spanGaps).<br>
   - '13개국 평균'은 OECD가 공식 발표하는 G20 CLI 지수가 아니라, 이 대시보드가 한국·미국·중국·일본·독일·영국·인도·브라질·멕시코·프랑스·이탈리아·스페인·인도네시아 13개국 CLI를 단순평균한 자체 계산값입니다. FRED가 제공하던 공식 OECD/G20 종합 CLI 시리즈는 2022년 11월 이후 갱신이 중단되어 이 대시보드에서는 쓸 수 없습니다.<br>
   - 조업일수는 평일에서 법정공휴일과 근로자의 날(5/1)을 빼고 토요일을 0.5일로 더해 계산합니다(관세청·산업부 기준). 산업부 '수출입 동향'이 발표한 일평균 수출액에서 역산한 조업일수와 2026년 3~7월 5개월이 모두 일치하는 것을 확인했습니다. 다만 임시공휴일은 holidays 패키지 반영 시점에 따라 누락될 수 있습니다.<br>
@@ -1507,34 +1521,49 @@ buildMddChart('mddChartUS', 'mddMissingNoteUS', [
   { key: '나스닥', s: mddNASDAQ, color: palette[1] },
 ]);
 
+// 이동평균은 결측(휴장일 null)을 건너뛰고 유효값 n개로 계산한다.
+function movingAvg(vals, n) {
+  const out = new Array(vals.length).fill(null);
+  const buf = [];
+  for (let i = 0; i < vals.length; i++) {
+    if (vals[i] == null) { out[i] = null; continue; }
+    buf.push(vals[i]);
+    if (buf.length > n) buf.shift();
+    if (buf.length === n) out[i] = buf.reduce((a, b) => a + b, 0) / n;
+  }
+  return out;
+}
+const MA_DEFS = [
+  { n: 20, label: '20일선', color: '#D84315' },
+  { n: 60, label: '60일선', color: '#7B1FA2' },
+  { n: 120, label: '120일선', color: '#2E7D32' },
+];
+
 function buildPriceChart(canvasId, missingNoteId, label, series, color) {
   safeChart(canvasId, () => {
     if (series.dates.length === 0) {
       const el = document.getElementById(missingNoteId);
-      if (el) el.textContent = `참고: ${label} 데이터가 없습니다. fetch_macro_data.py를 로컬에서 실행하면 채워집니다.`;
+      if (el) el.textContent = `참고: ${label} 데이터가 없습니다.`;
       return;
     }
     new Chart(document.getElementById(canvasId), {
       type: 'line',
       data: { labels: series.dates, datasets: [
         {
-          label,
-          data: series.vals,
-          borderColor: color,
-          backgroundColor: hexToRgba(color, 0.12),
-          borderWidth: 2,
-          fill: true,
-          tension: 0.15,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: color,
-          spanGaps: true,
+          label, data: series.vals, borderColor: color,
+          backgroundColor: hexToRgba(color, 0.12), borderWidth: 2, fill: true,
+          tension: 0.15, pointRadius: 0, pointHoverRadius: 4,
+          pointHoverBackgroundColor: color, spanGaps: true,
         },
+        ...MA_DEFS.map(m => ({
+          label: m.label, data: movingAvg(series.vals, m.n), borderColor: m.color,
+          borderWidth: 1.5, fill: false, tension: 0.15, pointRadius: 0, spanGaps: true,
+        })),
       ]},
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false }, tooltip: commaTooltip() },
+        plugins: { legend: { display: true, labels: { usePointStyle: true } }, tooltip: commaTooltip() },
         scales: {
           y: { title: { display: true, text: '종가' }, grid: { color: '#eee' }, ticks: COMMA_TICKS },
           x: { grid: { display: false } },
@@ -1544,8 +1573,40 @@ function buildPriceChart(canvasId, missingNoteId, label, series, color) {
   });
 }
 
+// 이격도 = 종가 / 이동평균 x 100
+function buildDisparityChart(canvasId, series) {
+  safeChart(canvasId, () => {
+    if (!series.dates.length) return;
+    const sets = MA_DEFS.map(m => {
+      const ma = movingAvg(series.vals, m.n);
+      return { ...m, data: series.vals.map((v, i) =>
+        (v != null && ma[i]) ? (v / ma[i]) * 100 : null) };
+    });
+    const start = Math.min(...sets.map(x => firstValidIdx(x.data)));
+    const labels = series.dates.slice(start);
+    setRange(canvasId, labels[0], labels[labels.length - 1]);
+    new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: { labels, datasets: sets.map(x => ({
+        label: x.label + ' 이격도', data: x.data.slice(start), borderColor: x.color,
+        borderWidth: x.n === 20 ? 1.5 : 2, ...COMMON_LINE_OPTS,
+      }))},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: { y: { title: { display: true, text: '이격도 (100 = 이동평균선)' },
+          grid: { color: ctx => ctx.tick.value === 100 ? '#888' : '#eee',
+                  lineWidth: ctx => ctx.tick.value === 100 ? 1.5 : 1 } },
+          x: { grid: { display: false } } }
+      }
+    });
+  });
+}
+
 buildPriceChart('kospiPriceChart', 'kospiPriceMissingNote', 'KOSPI 종가', kospiPrice, palette[5]);
 buildPriceChart('sp500PriceChart', null, 'S&P500 종가', sp500Price, palette[0]);
+buildDisparityChart('kospiDispChart', kospiPrice);
+buildDisparityChart('sp500DispChart', sp500Price);
 
 if (pMonthsDropped > 0) {
   const el = document.getElementById('basisBackfillNote');
