@@ -368,14 +368,50 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
 
 
 # ------------------------------------------------------------------
-# 수출 속보치 (산업통상자원부 '수출입 동향', 익월 1일 발표)
+# 수출 속보치 (익월 1일 시점의 월 총수출액)
 # ------------------------------------------------------------------
-# 관세청 품목별 API는 확정치라 익월 15일경에야 채워진다. 그 사이 2주를 메우려고
-# 속보 총액을 따로 가져온다.
-#
-# 산업부 홈페이지(motir.go.kr)는 숫자가 HWP/PDF 첨부에만 있고 첨부 직접
-# 다운로드가 404로 막혀 있어 자동 수집이 불가능하다. 대신 KDI 경제정보센터가
-# 같은 보도자료 요약을 HTML 본문으로 싣기 때문에 그쪽에서 총액과 YoY를 읽는다.
+# 품목별 API(Itemtrade)는 HS코드별 확정치라 익월 15일경에야 채워지지만,
+# 수출입총괄 API(Newtrade)는 같은 시점에 이미 그 달 총액을 갖고 있다.
+# (2026-08-09 확인: Itemtrade는 202607이 빈 응답, Newtrade는 988.87억달러 반환)
+# 응답도 500바이트대라 가볍고 기존 키로 그대로 인증된다. 그래서 속보 총액은
+# 이 API에서 받고, 실패할 때만 KDI 스크래핑으로 넘어간다.
+CUSTOMS_TOTAL_URL = "https://apis.data.go.kr/1220000/Newtrade/getNewtradeList"
+
+
+def fetch_customs_total(yymm: str):
+    """수출입총괄 API에서 그 달 총수출액(달러)을 받아온다. 없으면 None."""
+    last_err = None
+    for i in range(3):
+        url = CUSTOMS_TOTAL_URL if i < 2 else CUSTOMS_TOTAL_URL.replace("https://", "http://")
+        try:
+            res = requests.get(
+                url,
+                params={"serviceKey": CUSTOMS_SERVICE_KEY, "strtYymm": yymm, "endYymm": yymm},
+                timeout=(10, 60),
+            )
+            res.raise_for_status()
+            root = ET.fromstring(res.text)
+            if root.findtext(".//resultCode") not in (None, "00"):
+                print(f"    총괄 API 오류: {root.findtext('.//resultMsg')}")
+                return None
+            for item in root.findall(".//item"):
+                if item.findtext("year") == "총계":
+                    continue
+                try:
+                    return float(item.findtext("expDlr") or 0)
+                except ValueError:
+                    return None
+            return None      # 아직 미발표
+        except Exception as e:
+            last_err = e
+            print(f"    총괄 API 시도 {i+1}/3 실패({type(e).__name__})")
+            time.sleep(5 * (i + 1))
+    raise last_err
+
+
+# 총괄 API가 막혔을 때의 대비책. 산업부 홈페이지(motir.go.kr)는 숫자가 HWP/PDF
+# 첨부에만 있고 첨부 직접 다운로드가 404로 막혀 있어 쓸 수 없다. 대신 KDI
+# 경제정보센터가 같은 보도자료 요약을 HTML 본문으로 싣기 때문에 거기서 읽는다.
 KDI_LIST = "https://eiec.kdi.re.kr/policy/materialList.do?pp=100&pg={pg}"
 KDI_VIEW = "https://eiec.kdi.re.kr/policy/materialView.do?num={num}"
 KDI_UA = {"User-Agent": "Mozilla/5.0 (compatible; macro-dashboard/1.0)"}
@@ -528,18 +564,26 @@ def update_export_data(existing):
         if m == 0:
             m, y = 12, y - 1
         ym = f"{y:04d}{m:02d}"
-        if ym in basis_ok or ym in prelim:
-            continue          # 확정치가 이미 있거나 속보를 이미 받아둔 달
+        if ym in basis_ok:
+            continue          # 품목별 확정치가 이미 들어온 달
         if ym in total_1000 and ym not in prelim:
             continue          # 예전 확정치가 남아 있는 달
+        # 속보 총액도 확정 전까지 계속 개정되므로, 이미 받아둔 달도 매번 다시 받는다
         print(f"  - {ym} 속보치 조회")
+        total_usd = None
         try:
-            got = fetch_preliminary_export(ym)
+            total_usd = fetch_customs_total(ym)
+            if total_usd:
+                print(f"    속보 총수출 {total_usd/1e8:,.1f}억달러 [관세청 수출입총괄 API]")
         except Exception as e:
-            print(f"    속보 수집 실패({type(e).__name__}: {e})")
-            got = None
-        if got:
-            total_usd, _yoy = got
+            print(f"    총괄 API 실패({type(e).__name__}) - KDI로 대체 시도")
+        if not total_usd:
+            try:
+                got = fetch_preliminary_export(ym)
+                total_usd = got[0] if got else None
+            except Exception as e:
+                print(f"    KDI 속보 수집도 실패({type(e).__name__}: {e})")
+        if total_usd:
             wd = korea_working_days(int(ym[:4]), int(ym[4:]))
             total_1000[ym] = round(total_usd / 1000, 1)
             daily_1000[ym] = round(total_usd / 1000 / wd, 1) if wd else None
