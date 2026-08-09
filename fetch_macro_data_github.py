@@ -367,6 +367,71 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
     return True
 
 
+# ------------------------------------------------------------------
+# 수출 속보치 (산업통상자원부 '수출입 동향', 익월 1일 발표)
+# ------------------------------------------------------------------
+# 관세청 품목별 API는 확정치라 익월 15일경에야 채워진다. 그 사이 2주를 메우려고
+# 속보 총액을 따로 가져온다.
+#
+# 산업부 홈페이지(motir.go.kr)는 숫자가 HWP/PDF 첨부에만 있고 첨부 직접
+# 다운로드가 404로 막혀 있어 자동 수집이 불가능하다. 대신 KDI 경제정보센터가
+# 같은 보도자료 요약을 HTML 본문으로 싣기 때문에 그쪽에서 총액과 YoY를 읽는다.
+KDI_LIST = "https://eiec.kdi.re.kr/policy/materialList.do?pp=100&pg={pg}"
+KDI_VIEW = "https://eiec.kdi.re.kr/policy/materialView.do?num={num}"
+KDI_UA = {"User-Agent": "Mozilla/5.0 (compatible; macro-dashboard/1.0)"}
+KDI_MAX_PAGES = 8
+
+
+def _kdi_text(url):
+    res = requests.get(url, timeout=60, headers=KDI_UA)
+    res.raise_for_status()
+    res.encoding = res.apparent_encoding or "utf-8"
+    html = re.sub(r"<script.*?</script>", "", res.text, flags=re.S)
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)), re.sub(r"\s+", " ", res.text)
+
+
+def fetch_preliminary_export(yymm: str):
+    """산업부 수출입 동향 속보에서 (총수출 달러, YoY %)를 읽어온다. 없으면 None."""
+    year, month = int(yymm[:4]), int(yymm[4:])
+    title_pat = re.compile(rf"{year}년\s*{month}월\s*수출입\s*동향")
+    num = None
+    for pg in range(1, KDI_MAX_PAGES + 1):
+        try:
+            _, raw = _kdi_text(KDI_LIST.format(pg=pg))
+        except Exception as e:
+            print(f"    KDI 목록 {pg}쪽 실패({type(e).__name__})")
+            return None
+        m = title_pat.search(raw)
+        if m:
+            # 목록에서 제목 바로 앞에 그 글의 상세 링크가 온다
+            before = re.findall(r"materialView\.do\?num=(\d+)", raw[: m.start()])
+            num = before[-1] if before else None
+            break
+    if not num:
+        print(f"    KDI에서 {year}년 {month}월 수출입 동향 글을 찾지 못했습니다(아직 미발표).")
+        return None
+
+    body, _ = _kdi_text(KDI_VIEW.format(num=num))
+    if not title_pat.search(body):
+        print(f"    KDI 글 num={num}의 제목이 예상과 다릅니다. 건너뜁니다.")
+        return None
+    amount = re.search(r"수출은.{0,80}?([\d,]+\.\d)\s*억\s*달러", body)
+    yoy = re.search(r"전년\s*동월\s*대비\s*([\d.]+)\s*%\s*(증가|감소)", body)
+    if not amount:
+        print(f"    KDI 글 num={num}에서 수출액을 찾지 못했습니다(문구 변경 가능성).")
+        return None
+    total_usd = float(amount.group(1).replace(",", "")) * 1e8
+    yoy_pct = None
+    if yoy:
+        yoy_pct = float(yoy.group(1)) * (1 if yoy.group(2) == "증가" else -1)
+    # 한국 월 수출이 400억달러를 밑돌 일은 없으므로, 엉뚱한 숫자를 잡았는지 방어한다.
+    if not (4e10 < total_usd < 3e11):
+        print(f"    KDI에서 읽은 수출액 {total_usd:,.0f}달러가 비정상이라 무시합니다.")
+        return None
+    print(f"    속보 총수출 {total_usd/1e8:,.1f}억달러 (YoY {yoy_pct:+.1f}%) [KDI num={num}]")
+    return total_usd, yoy_pct
+
+
 def update_export_data(existing):
     """기존 수출 데이터에 최근 몇 달치를 관세청 API로 새로 받아 덮어쓴다."""
     total_1000 = dict(existing.get("export_total_1000usd", {}))
@@ -452,6 +517,36 @@ def update_export_data(existing):
             if fixed:
                 print(f"  1일평균 수출액 {fixed}개월을 현재 조업일수 기준으로 재계산했습니다.")
 
+    # 확정치가 아직 없는 최근 달을 속보치로 채운다. 확정치가 들어오면 그 달은
+    # 위 루프에서 덮어써지고 속보 딱지도 사라진다.
+    prelim = {k: v for k, v in existing.get("export_preliminary", {}).items()
+              if k not in basis_ok}
+    now = datetime.now()
+    y, m = now.year, now.month
+    for _ in range(3):
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+        ym = f"{y:04d}{m:02d}"
+        if ym in basis_ok or ym in prelim:
+            continue          # 확정치가 이미 있거나 속보를 이미 받아둔 달
+        if ym in total_1000 and ym not in prelim:
+            continue          # 예전 확정치가 남아 있는 달
+        print(f"  - {ym} 속보치 조회")
+        try:
+            got = fetch_preliminary_export(ym)
+        except Exception as e:
+            print(f"    속보 수집 실패({type(e).__name__}: {e})")
+            got = None
+        if got:
+            total_usd, _yoy = got
+            wd = korea_working_days(int(ym[:4]), int(ym[4:]))
+            total_1000[ym] = round(total_usd / 1000, 1)
+            daily_1000[ym] = round(total_usd / 1000 / wd, 1) if wd else None
+            prelim[ym] = True
+    if prelim:
+        print(f"  속보치로 채운 달: {sorted(prelim)}")
+
     remaining = [ym for ym in total_1000 if ym not in basis_ok]
     if remaining:
         print(f"  아직 이전 품목 분류 기준인 달: {len(remaining)}개월 "
@@ -464,6 +559,8 @@ def update_export_data(existing):
         "export_total_1000usd": total_1000,
         "export_daily_avg_1000usd": daily_1000,
         "export_workday_basis": WORKDAY_BASIS,
+        # 속보치로만 채워진 달 (확정치가 들어오면 목록에서 빠진다)
+        "export_preliminary": {k: True for k in sorted(prelim)},
         "product_basis": CATEGORY_BASIS,
         "product_basis_months": sorted(basis_ok),
         "categories": DEFAULT_CATEGORIES,
