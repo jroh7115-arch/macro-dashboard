@@ -71,6 +71,10 @@ CATEGORY_HS = {
 }
 DEFAULT_CATEGORIES = list(CATEGORY_HS)
 
+# 조업일수 계산 기준이 바뀌면 1일평균 수출액 전 구간을 새 기준으로 다시 계산해야
+# 한다. data.js에 이 값을 같이 저장해 두고, 코드의 기준과 다르면 전체 재계산한다.
+WORKDAY_BASIS = "official-sat-half-v1"
+
 CUSTOMS_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 # 관세청은 잠정치를 뒤에 확정치로 개정하므로, 매 실행마다 최근 몇 달치를 다시
 # 받아 덮어쓴다. 그보다 오래된 달은 기존 값을 그대로 둔다.
@@ -236,20 +240,22 @@ def fetch_yfinance_series(ticker: str, years_back: int):
 # 관세청 품목별 수출입실적 -> 수출총액 / 품목별 수출액 / 1일평균 수출액
 # ------------------------------------------------------------------
 def korea_working_days(year: int, month: int):
-    """토·일요일과 한국 법정공휴일을 뺀 조업일수(추정).
+    """관세청·산업통상자원부가 쓰는 조업일수.
 
-    기존 data.js의 1일평균 수출액 61개월치를 이 방식으로 전부 재현되는지
-    확인했고 61/61 모두 일치했으므로, 로컬 스크립트와 같은 계산이다.
+    공식 = 평일(법정공휴일과 근로자의 날 제외) + 토요일 × 0.5.
+    토요일을 반일로 치는 것이 핵심으로, 이걸 빼면 1일평균 수출액이 7~11%
+    부풀려진다. 산업부 '수출입 동향'이 발표한 일평균 수출액에서 역산한
+    조업일수(2026년 3~7월 5개월)와 이 공식이 모두 일치하는 것을 확인했다.
     """
     import holidays
 
     kr = holidays.KR(years=year)
-    days = calendar.monthrange(year, month)[1]
-    return sum(
-        1
-        for d in range(1, days + 1)
-        if date(year, month, d).weekday() < 5 and date(year, month, d) not in kr
-    )
+    n = calendar.monthrange(year, month)[1]
+    days = [date(year, month, d) for d in range(1, n + 1)]
+    labor_day = date(year, 5, 1)  # 근로자의 날: 공휴일은 아니지만 조업일에서 빠진다
+    weekdays = [d for d in days if d.weekday() < 5 and d not in kr and d != labor_day]
+    saturdays = [d for d in days if d.weekday() == 5 and d not in kr and d != labor_day]
+    return len(weekdays) + 0.5 * len(saturdays)
 
 
 def customs_request(yymm: str, attempts: int = 3):
@@ -333,10 +339,10 @@ def check_workday_consistency(total_1000, daily_1000, skip_months):
         if not total or not avg:
             continue
         checked += 1
-        implied = round(total / avg)
+        implied = total / avg  # 조업일수는 토요일 반일 때문에 .5 단위가 나온다
         calc = korea_working_days(int(ym[:4]), int(ym[4:]))
-        if implied != calc:
-            mismatches.append((ym, implied, calc))
+        if abs(implied - calc) > 0.02:
+            mismatches.append((ym, round(implied, 2), calc))
     if mismatches:
         print(f"  [경고] 조업일수 계산이 기존 데이터 {len(mismatches)}개월과 어긋납니다:")
         for ym, implied, calc in mismatches[:10]:
@@ -368,7 +374,14 @@ def update_export_data(existing):
             m -= 1
             if m == 0:
                 m, y = 12, y - 1
-        consistent = check_workday_consistency(total_1000, daily_1000, set(targets))
+        # 조업일수 기준 자체를 바꾼 경우에는 기존 값과 어긋나는 게 당연하므로
+        # 검증을 건너뛰고 전 구간을 새 기준으로 다시 계산한다.
+        basis_changed = existing.get("export_workday_basis") != WORKDAY_BASIS
+        if basis_changed:
+            print(f"  조업일수 기준이 '{WORKDAY_BASIS}'로 바뀌어 전 구간을 다시 계산합니다.")
+            consistent = True
+        else:
+            consistent = check_workday_consistency(total_1000, daily_1000, set(targets))
         failures = 0
         for yymm in sorted(targets):
             if failures >= 2:
@@ -418,6 +431,7 @@ def update_export_data(existing):
     return {
         "export_total_1000usd": total_1000,
         "export_daily_avg_1000usd": daily_1000,
+        "export_workday_basis": WORKDAY_BASIS,
         "categories": DEFAULT_CATEGORIES,
         "product_months": product_months,
         "product_1000usd": products,
