@@ -1014,13 +1014,7 @@ def main():
         fred_macro[sid] = fetch_fred_series(sid, start_date=start)
         time.sleep(0.2)
 
-    print("\n[3/5] S&P500 / 나스닥 MDD 계산 중...")
-    mdd = {
-        "SP500": compute_mdd_series(gspc or fred_macro["SP500"]),
-        "NASDAQCOM": compute_mdd_series(ixic or fred_macro["NASDAQCOM"]),
-    }
-
-    print("\n[4/5] yfinance에서 KOSPI / KOSDAQ150 / SOX / VKOSPI 수집 중...")
+    print("\n[3/5] yfinance에서 지수 수집 중 (KOSPI/KOSDAQ150/SOX/S&P500/나스닥)...")
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
     sox = fetch_yfinance_series("^SOX", DAILY_YEARS_BACK)
@@ -1035,8 +1029,15 @@ def main():
     usdkrw = fetch_yfinance_series("KRW=X", DAILY_YEARS_BACK)
     dxy = fetch_yfinance_series("DX-Y.NYB", DAILY_YEARS_BACK)
     wti = fetch_yfinance_series("CL=F", DAILY_YEARS_BACK)
-    mdd["KOSPI"] = compute_mdd_series(kospi)
-    mdd["KOSDAQ150"] = compute_mdd_series(kosdaq150)
+    # MDD는 지수를 다 받은 뒤 계산한다. 예전에는 이 계산이 yfinance 수집보다 앞에
+    # 있어서 gspc를 참조하다 UnboundLocalError로 실행 전체가 죽었다.
+    print("\n[4/5] MDD(고점대비 낙폭) 계산 중...")
+    mdd = {
+        "SP500": compute_mdd_series(gspc or fred_macro["SP500"]),
+        "NASDAQCOM": compute_mdd_series(ixic or fred_macro["NASDAQCOM"]),
+        "KOSPI": compute_mdd_series(kospi),
+        "KOSDAQ150": compute_mdd_series(kosdaq150),
+    }
 
     # VKOSPI는 야후가 티커를 내려서 KRX에서 받는다(기존에 받아둔 값은 계속 보존)
     print("  VKOSPI: 한국거래소(KRX)에서 수집")
