@@ -1016,14 +1016,20 @@ def main():
 
     print("\n[3/5] S&P500 / 나스닥 MDD 계산 중...")
     mdd = {
-        "SP500": compute_mdd_series(fred_macro["SP500"]),
-        "NASDAQCOM": compute_mdd_series(fred_macro["NASDAQCOM"]),
+        "SP500": compute_mdd_series(gspc or fred_macro["SP500"]),
+        "NASDAQCOM": compute_mdd_series(ixic or fred_macro["NASDAQCOM"]),
     }
 
     print("\n[4/5] yfinance에서 KOSPI / KOSDAQ150 / SOX / VKOSPI 수집 중...")
     kospi = fetch_yfinance_series("^KS11", DAILY_YEARS_BACK)
     kosdaq150 = fetch_yfinance_series("229200.KS", DAILY_YEARS_BACK)
     sox = fetch_yfinance_series("^SOX", DAILY_YEARS_BACK)
+    # S&P500·나스닥도 야후에서 받는다. FRED판(SP500/NASDAQCOM)은 장 마감 몇 시간 뒤에야
+    # 올라오고 나스닥은 미 중부시간 22:38이라 한국에서 반나절을 기다려야 하는데,
+    # 야후는 마감 직후 종가가 들어온다(2026-08-10 확인: 마감 3시간 뒤 이미 반영,
+    # 값도 FRED와 동일). MDD도 이 시리즈로 계산한다.
+    gspc = fetch_yfinance_series("^GSPC", DAILY_YEARS_BACK)
+    ixic = fetch_yfinance_series("^IXIC", DAILY_YEARS_BACK)
     # 환율·달러인덱스·유가는 FRED(연준 H.10, EIA)가 주 1회 묶어서 내보내 최대 일주일까지
     # 묵은 값이 된다. 매일 갱신되는 시장 시세로 대신 보여준다.
     usdkrw = fetch_yfinance_series("KRW=X", DAILY_YEARS_BACK)
@@ -1057,7 +1063,9 @@ def main():
         "bok": bok,
         "kis_flows": kis_flows,
         "vkospi": vkospi,
-        "equities": {"SP500": fred_macro["SP500"], "NASDAQCOM": fred_macro["NASDAQCOM"],
+        # 야후 값을 우선 쓰고, 못 받았을 때만 FRED로 넘어간다.
+        "equities": {"SP500": gspc or fred_macro["SP500"],
+                     "NASDAQCOM": ixic or fred_macro["NASDAQCOM"],
                      "KOSPI": kospi, "KOSDAQ150": kosdaq150, "SOX": sox},
         "mdd": mdd,
     }
