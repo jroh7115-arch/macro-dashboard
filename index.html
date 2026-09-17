@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한국 매크로 대시보드</title>
+<!--
+  실제 대시보드는 dashboard.html이다. GitHub Pages는 디렉터리 루트에서 index.html만
+  찾으므로, 이 파일이 없으면 주소 끝에 /dashboard.html을 붙이지 않는 한 404가 난다.
+  이름을 바꾸는 대신 넘겨주기만 해서 이미 공유된 dashboard.html 주소도 계속 살려둔다.
+-->
+<link rel="canonical" href="dashboard.html">
+<meta http-equiv="refresh" content="0; url=dashboard.html">
+<script>
+  // 쿼리스트링·해시를 붙여서 넘긴다. replace라 뒤로가기에 이 페이지가 끼지 않는다.
+  location.replace('dashboard.html' + location.search + location.hash);
+</script>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         margin: 4rem auto; max-width: 32rem; padding: 0 1rem;
+         color: #333; line-height: 1.7; }
+</style>
+</head>
+<body>
+<p>대시보드로 이동 중입니다. 자동으로 넘어가지 않으면
+   <a href="dashboard.html">여기를 눌러 주세요</a>.</p>
+</body>
+</html>

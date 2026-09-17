@@ -278,6 +278,13 @@ def fetch_fred_cli(country_code: str, months_back: int):
     return {d[:7].replace("-", ""): v for d, v in raw.items()}
 
 
+# FRED는 가끔 502/503을 뱉는다. 재시도가 없던 시절엔 CLI 계열 하나에서 502가 한 번
+# 나는 것만으로 실행 전체가 죽어 그날 데이터가 통째로 비었다(2026-09-16 INDLOLITOAASTSAM,
+# 2026-09-17 CHNLOLITOAASTSAM 연속 실패). 재시도를 다 쓰고도 안 되면 그때는 그대로
+# 예외를 올린다 - 반쪽짜리 data.js로 멀쩡한 기존 값을 덮어쓰는 게 더 나쁘기 때문이다.
+FRED_MAX_RETRIES = 4
+
+
 def fetch_fred_series(series_id: str, months_back: int = None, start_date: str = None):
     url = "https://api.stlouisfed.org/fred/series/observations"
     params = {
@@ -291,8 +298,26 @@ def fetch_fred_series(series_id: str, months_back: int = None, start_date: str =
     if months_back:
         params["sort_order"] = "desc"
         params["limit"] = months_back
-    res = requests.get(url, params=params, timeout=20)
-    res.raise_for_status()
+    res = None
+    for attempt in range(FRED_MAX_RETRIES):
+        try:
+            res = requests.get(url, params=params, timeout=20)
+            res.raise_for_status()
+            break
+        except (requests.exceptions.HTTPError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            # 4xx는 잘못된 series_id나 키 문제라 다시 불러도 같은 답이다.
+            if status is not None and status < 500:
+                raise
+            if attempt == FRED_MAX_RETRIES - 1:
+                raise
+            wait = 3 * (2 ** attempt)
+            print("    ! FRED %s %s - %d초 뒤 재시도 (%d/%d)"
+                  % (series_id, status or type(exc).__name__, wait,
+                     attempt + 2, FRED_MAX_RETRIES))
+            time.sleep(wait)
     obs = res.json().get("observations", [])
     out = {}
     for o in obs:
