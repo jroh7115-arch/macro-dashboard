@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>대시보드 소개</title>
-<meta name="description" content="한국 수출과 글로벌 경기 사이클을 한 화면에서 추적하는 개인용 매크로 대시보드 소개">
+<meta name="description" content="흩어진 한국·미국 경제지표를 하루 세 번 자동으로 모아 한 화면에 그리는 개인용 매크로 대시보드 소개">
 <style>
   :root {
     --bg: #f5f6f8; --fg: #222; --muted: #666; --faint: #999;
@@ -21,13 +21,13 @@
   .wrap { max-width: 860px; margin: 0 auto; }
 
   /* 헤더 */
-  header { margin-bottom: 28px; }
+  header { margin-bottom: 26px; }
   .eyebrow {
     font-size: 12px; font-weight: 700; letter-spacing: .08em;
     color: var(--accent); text-transform: uppercase; margin-bottom: 8px;
   }
   h1 { font-size: 27px; line-height: 1.3; margin: 0 0 12px; letter-spacing: -.01em; }
-  .lede { font-size: 15.5px; color: var(--muted); margin: 0; max-width: 60ch; }
+  .lede { font-size: 15.5px; color: var(--muted); margin: 0; max-width: 62ch; }
 
   /* 숫자 줄 */
   .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 32px; }
@@ -38,16 +38,41 @@
   .stat b { display: block; font-size: 21px; line-height: 1.2; letter-spacing: -.02em; }
   .stat span { font-size: 12px; color: var(--faint); }
 
-  /* 공통 섹션 */
+  /* 공통 */
   section { margin-bottom: 30px; }
   h2 {
-    font-size: 15px; margin: 0 0 14px; color: #444;
+    font-size: 15px; margin: 0 0 6px; color: #444;
     border-left: 4px solid var(--accent); padding-left: 9px;
   }
+  .sub { font-size: 12.5px; color: var(--faint); margin: 0 0 14px; padding-left: 13px; }
   .block {
     background: var(--card); border-radius: 8px; padding: 18px 20px;
     box-shadow: var(--shadow);
   }
+
+  /* 질문 카드 */
+  .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 10px; }
+  .qa {
+    background: var(--card); border-radius: 8px; padding: 15px 17px;
+    box-shadow: var(--shadow);
+  }
+  .qa .q {
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    margin-bottom: 6px; line-height: 1.45;
+  }
+  .qa .a { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  /* 맞다 / 아니다 */
+  .fit { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+  .fit .block { padding: 16px 18px; }
+  .fit h3 { font-size: 13.5px; margin: 0 0 10px; display: flex; align-items: center; gap: 7px; }
+  .yes { border-top: 3px solid var(--green); }
+  .no  { border-top: 3px solid #c8ccd4; }
+  .yes h3 { color: var(--green); }
+  .no  h3 { color: var(--faint); }
+  .fit ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: #444; }
+  .fit li { margin-bottom: 6px; line-height: 1.55; }
+  .fit li:last-child { margin-bottom: 0; }
 
   /* 섹션 목록 */
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
@@ -74,17 +99,15 @@
 
   /* 범례 */
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: 6px; }
-  .legend { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .legend { list-style: none; margin: 0 0 14px; padding: 0; font-size: 13px; }
   .legend li { padding: 5px 0; }
   .legend li + li { border-top: 1px solid var(--line); }
 
-  /* 읽는 법 */
   ul.plain { margin: 0; padding-left: 20px; font-size: 13.5px; color: #333; }
   ul.plain li { margin-bottom: 7px; }
   ul.plain li:last-child { margin-bottom: 0; }
   ul.plain b { color: var(--fg); }
 
-  /* 한계 */
   .caveat { border-left: 3px solid var(--amber); }
 
   /* 링크 버튼 */
@@ -108,11 +131,11 @@
 
   <header>
     <div class="eyebrow">한국 매크로 대시보드</div>
-    <h1>수출이 먼저 움직이고,<br>주가가 뒤따른다</h1>
+    <h1>흩어져 있는 경제지표를<br>한 화면에서</h1>
     <p class="lede">
-      한국 수출은 세계 경기를 가장 먼저 보여주는 지표 중 하나입니다.
-      이 페이지는 그 수출 흐름을 경기선행지수·금리·수급과 <b>한 화면에</b> 놓고
-      사이클이 어디쯤 와 있는지 가늠하기 위해 만든 개인용 대시보드입니다.
+      관세청·한국은행·한국거래소·FRED에 따로따로 올라오는 지표를
+      하루 세 번 자동으로 모아 한 페이지에 그립니다.
+      매번 기관 사이트를 돌며 찾아 옮겨 적을 필요가 없습니다.
     </p>
   </header>
 
@@ -124,7 +147,62 @@
   </div>
 
   <section>
-    <h2>무엇을 보나</h2>
+    <h2>이런 게 궁금할 때</h2>
+    <p class="sub">질문 하나에 차트 하나가 대응합니다.</p>
+    <div class="qgrid">
+      <div class="qa">
+        <div class="q">지금 경기가 살아나는 중인가, 꺾이는 중인가?</div>
+        <div class="a">OECD 경기선행지수 13개국. 한국이 평균보다 앞서는지, 오르는 나라가 몇이나 되는지까지.</div>
+      </div>
+      <div class="qa">
+        <div class="q">반도체 업황이 돌아섰나?</div>
+        <div class="a">관세청 품목별 수출액. 월이 끝나기를 기다리지 않고 1~10일·1~20일 누적으로 미리.</div>
+      </div>
+      <div class="qa">
+        <div class="q">외국인과 기관은 사고 있나, 팔고 있나?</div>
+        <div class="a">투자자별 일별 순매수. 코스피·코스닥을 나눠서, 누적으로.</div>
+      </div>
+      <div class="qa">
+        <div class="q">지금 지수가 과열인가, 눌려 있나?</div>
+        <div class="a">20·60·120일 이동평균 대비 이격도와 고점대비 낙폭(MDD).</div>
+      </div>
+      <div class="qa">
+        <div class="q">돈이 풀리는 중인가, 조이는 중인가?</div>
+        <div class="a">미국 금리와 장단기 금리차, M2, 연준 대차대조표, 하이일드 스프레드.</div>
+      </div>
+      <div class="qa">
+        <div class="q">시장이 지금 불안해하고 있나?</div>
+        <div class="a">VIX와 VKOSPI. 한국과 미국의 공포 수준을 나란히.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>누구에게 필요한가</h2>
+    <div class="fit">
+      <div class="block yes">
+        <h3>이런 분께 맞습니다</h3>
+        <ul>
+          <li>매달 같은 지표를 여러 기관 사이트에서 찾아 <b>직접 옮겨 적던</b> 분</li>
+          <li>개별 종목보다 <b>업황과 사이클</b>을 먼저 보는 투자자</li>
+          <li>수출·반도체 업황을 <b>업무로 따라가야</b> 하는 분</li>
+          <li>경제 뉴스의 숫자가 <b>어느 수준인지 맥락</b>을 알고 싶은 분</li>
+        </ul>
+      </div>
+      <div class="block no">
+        <h3>이런 용도는 아닙니다</h3>
+        <ul>
+          <li>실시간 시세나 호가 — <b>종가 기준</b>으로 하루 세 번만 갱신됩니다</li>
+          <li>개별 종목 분석이나 재무제표 — <b>시장·업종 단위</b>만 다룹니다</li>
+          <li>매수·매도 신호 — <b>판단은 보는 사람 몫</b>입니다</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>무엇이 들어 있나</h2>
+    <p class="sub">앞의 세 가지가 중심이고, 나머지는 배경을 읽기 위한 보조 지표입니다.</p>
     <div class="grid">
       <div class="item">
         <h3>1. 주가 · 지수<span class="tag">일별</span></h3>
@@ -135,7 +213,7 @@
         <p>OECD CLI 13개국. 한국 vs 주요국 평균, 전월차, 상승국 비중(확산지수).</p>
       </div>
       <div class="item">
-        <h3>3. 수출입<span class="tag">핵심</span></h3>
+        <h3>3. 수출입<span class="tag">월별</span></h3>
         <p>월 수출총액·1일평균·품목별 7종, 그리고 월중 10·20일 누적 조기지표.</p>
       </div>
       <div class="item alt">
@@ -212,7 +290,7 @@
         <li><span class="dot" style="background:#4472C4"></span>
             <b>확정치</b> — 관세청 최종 확정.</li>
       </ul>
-      <ul class="plain" style="margin-top:14px">
+      <ul class="plain">
         <li>차트 위에서 <b>휠을 굴리면 확대</b>, 드래그하면 좌우로 움직입니다.</li>
         <li>차트마다 <b>기간 버튼</b>이 있고, 기본은 전체 구간입니다.</li>
         <li>월별 지표는 <b>월 단위로 표시</b>됩니다(예: 2026-08).</li>
