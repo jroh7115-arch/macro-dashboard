@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대시보드 소개</title>
+<meta name="description" content="한국 수출과 글로벌 경기 사이클을 한 화면에서 추적하는 개인용 매크로 대시보드 소개">
+<style>
+  :root {
+    --bg: #f5f6f8; --fg: #222; --muted: #666; --faint: #999;
+    --card: #fff; --line: #e6e9ef; --accent: #4472C4; --accent-soft: #eef2fa;
+    --green: #2e7d32; --red: #c62828; --amber: #F9A825;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    margin: 0; padding: 32px 16px 64px; background: var(--bg); color: var(--fg);
+    line-height: 1.65; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  /* 헤더 */
+  header { margin-bottom: 28px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 8px;
+  }
+  h1 { font-size: 27px; line-height: 1.3; margin: 0 0 12px; letter-spacing: -.01em; }
+  .lede { font-size: 15.5px; color: var(--muted); margin: 0; max-width: 60ch; }
+
+  /* 숫자 줄 */
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 32px; }
+  .stat {
+    flex: 1; min-width: 116px; background: var(--card); border-radius: 8px;
+    padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .stat b { display: block; font-size: 21px; line-height: 1.2; letter-spacing: -.02em; }
+  .stat span { font-size: 12px; color: var(--faint); }
+
+  /* 공통 섹션 */
+  section { margin-bottom: 30px; }
+  h2 {
+    font-size: 15px; margin: 0 0 14px; color: #444;
+    border-left: 4px solid var(--accent); padding-left: 9px;
+  }
+  .block {
+    background: var(--card); border-radius: 8px; padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+
+  /* 섹션 목록 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .item {
+    background: var(--card); border-radius: 8px; padding: 14px 16px;
+    box-shadow: var(--shadow); border-left: 3px solid var(--accent);
+  }
+  .item.alt { border-left-color: #b9c4d8; }
+  .item h3 { font-size: 13.5px; margin: 0 0 5px; }
+  .item p { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.55; }
+  .tag {
+    display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); border-radius: 10px; padding: 1px 7px;
+    margin-left: 5px; vertical-align: 1.5px;
+  }
+
+  /* 표 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  thead th { color: var(--muted); font-weight: 600; border-bottom: 2px solid #ccd4e0; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: #f7f9fc; }
+  td.when { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+
+  /* 범례 */
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: 6px; }
+  .legend { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .legend li { padding: 5px 0; }
+  .legend li + li { border-top: 1px solid var(--line); }
+
+  /* 읽는 법 */
+  ul.plain { margin: 0; padding-left: 20px; font-size: 13.5px; color: #333; }
+  ul.plain li { margin-bottom: 7px; }
+  ul.plain li:last-child { margin-bottom: 0; }
+  ul.plain b { color: var(--fg); }
+
+  /* 한계 */
+  .caveat { border-left: 3px solid var(--amber); }
+
+  /* 링크 버튼 */
+  .cta { text-align: center; margin: 36px 0 8px; }
+  .btn {
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    font-size: 15px; font-weight: 700; padding: 13px 34px; border-radius: 26px;
+    box-shadow: 0 2px 8px rgba(68,114,196,.32);
+  }
+  .btn:hover { background: #395aa3; }
+  footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top: 18px; line-height: 1.7; }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 23px; }
+    .stat b { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">한국 매크로 대시보드</div>
+    <h1>수출이 먼저 움직이고,<br>주가가 뒤따른다</h1>
+    <p class="lede">
+      한국 수출은 세계 경기를 가장 먼저 보여주는 지표 중 하나입니다.
+      이 페이지는 그 수출 흐름을 경기선행지수·금리·수급과 <b>한 화면에</b> 놓고
+      사이클이 어디쯤 와 있는지 가늠하기 위해 만든 개인용 대시보드입니다.
+    </p>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b>34</b><span>개 차트</span></div>
+    <div class="stat"><b>9</b><span>개 섹션</span></div>
+    <div class="stat"><b>10년</b><span>치 시계열</span></div>
+    <div class="stat"><b>하루 3회</b><span>자동 갱신</span></div>
+  </div>
+
+  <section>
+    <h2>무엇을 보나</h2>
+    <div class="grid">
+      <div class="item">
+        <h3>1. 주가 · 지수<span class="tag">일별</span></h3>
+        <p>KOSPI·S&amp;P500·SOX 종가와 20/60/120일 이격도, 고점대비 낙폭(MDD).</p>
+      </div>
+      <div class="item">
+        <h3>2. 경기선행지수<span class="tag">월별</span></h3>
+        <p>OECD CLI 13개국. 한국 vs 주요국 평균, 전월차, 상승국 비중(확산지수).</p>
+      </div>
+      <div class="item">
+        <h3>3. 수출입<span class="tag">핵심</span></h3>
+        <p>월 수출총액·1일평균·품목별 7종, 그리고 월중 10·20일 누적 조기지표.</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 1. 수급</h3>
+        <p>기관·외국인·개인 순매수. 코스피/코스닥 분리, 일별 누적.</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 2. 한국 금리 · 물가 · 심리</h3>
+        <p>국고채 10년·3년, CPI, 제조업 BSI와 경제심리지수(ESI).</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 3. 미국 금리 · 유동성</h3>
+        <p>10Y·2Y와 장단기 금리차, M2, 연준 대차대조표, 하이일드 스프레드.</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 4. 환율 · 원자재</h3>
+        <p>원/달러, 달러인덱스, WTI 유가.</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 5. 미국 실물경기</h3>
+        <p>산업생산, 핵심자본재 수주, 연준 제조업 서베이 — 유료인 ISM PMI 대용.</p>
+      </div>
+      <div class="item alt">
+        <h3>기타 6. 변동성</h3>
+        <p>VIX와 VKOSPI. 수준 차이가 커서 축을 분리해 그립니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>데이터는 어디서 오나</h2>
+    <div class="block">
+      <table>
+        <thead><tr><th>출처</th><th>가져오는 것</th></tr></thead>
+        <tbody>
+          <tr><td>관세청 OpenAPI</td><td>수출 확정치 · 총괄 속보 · 10일 단위 잠정치</td></tr>
+          <tr><td>FRED</td><td>OECD CLI, 미국 금리 · M2 · 유동성 · 실물지표 · VIX</td></tr>
+          <tr><td>한국은행 ECOS</td><td>국고채 금리, CPI, 제조업 BSI, 경제심리지수</td></tr>
+          <tr><td>야후 파이낸스</td><td>KOSPI · KOSDAQ150 · S&amp;P500 · 나스닥 · SOX, 환율 · 유가</td></tr>
+          <tr><td>한국투자증권 OpenAPI</td><td>투자자별 일별 순매수</td></tr>
+          <tr><td>한국거래소 OpenAPI</td><td>VKOSPI</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>언제 갱신되나</h2>
+    <div class="block">
+      <table>
+        <thead><tr><th>시각(KST)</th><th>받는 것</th></tr></thead>
+        <tbody>
+          <tr><td class="when">07:00</td><td>미국 증시 당일 종가, 전일 금리 · VIX · 환율</td></tr>
+          <tr><td class="when">14:30</td><td>예비 — 앞선 실행이 지연되거나 실패했을 때 보완</td></tr>
+          <tr><td class="when">16:00</td><td>한국 증시 마감 후 — KOSPI · 수급 · VKOSPI</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.5px;color:var(--muted);margin:12px 0 0">
+        GitHub Actions가 자동으로 수집해 데이터 파일을 갱신하고, 갱신되면 페이지가 다시 배포됩니다.
+        월별 지표는 원 기관이 발표한 뒤에야 채워지므로, 대시보드 맨 위 <b>발표 일정</b> 표에서
+        다음 공표일을 확인할 수 있습니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>읽을 때 알아둘 것</h2>
+    <div class="block">
+      <ul class="legend">
+        <li><span class="dot" style="background:#F9A825"></span>
+            <b>속보치</b> — 발표 직후 값. 이후 개정됩니다.</li>
+        <li><span class="dot" style="background:#9db4dd"></span>
+            <b>개정 가능</b> — 잠정 단계.</li>
+        <li><span class="dot" style="background:#4472C4"></span>
+            <b>확정치</b> — 관세청 최종 확정.</li>
+      </ul>
+      <ul class="plain" style="margin-top:14px">
+        <li>차트 위에서 <b>휠을 굴리면 확대</b>, 드래그하면 좌우로 움직입니다.</li>
+        <li>차트마다 <b>기간 버튼</b>이 있고, 기본은 전체 구간입니다.</li>
+        <li>월별 지표는 <b>월 단위로 표시</b>됩니다(예: 2026-08).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>한계</h2>
+    <div class="block caveat">
+      <ul class="plain">
+        <li><b>품목별 수출은 HS코드로 직접 집계한 추정치</b>입니다. 산업부 발표 비중과 대조해
+            오차를 0.1%p 안쪽으로 맞췄지만, 산업부 공식 분류와 완전히 같지는 않습니다.</li>
+        <li><b>OECD CLI는 한두 달 늦게 나옵니다.</b> 최신월이 비어 보이면 수집 지연이 아니라
+            아직 발표 전인 경우가 대부분입니다.</li>
+        <li><b>월중 수출 지표는 완결된 달과 직접 비교하면 안 됩니다.</b> 그래서 10·20일
+            누적은 전년 같은 기간과 견주는 YoY로만 표시합니다.</li>
+        <li>투자 판단의 근거가 아니라 <b>흐름을 보기 위한 개인용 기록</b>입니다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="cta">
+    <a class="btn" href="dashboard.html">대시보드 열기 →</a>
+  </div>
+  <footer>
+    데이터 갱신 시각과 각 지표의 다음 발표일은 대시보드 상단에 표시됩니다.
+  </footer>
+
+</div>
+</body>
+</html>
