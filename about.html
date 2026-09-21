@@ -20,23 +20,34 @@
   }
   .wrap { max-width: 860px; margin: 0 auto; }
 
-  /* 헤더 */
-  header { margin-bottom: 26px; }
+  /* 히어로 - 배경을 깔아 페이지 상단을 붙잡아 준다.
+     색은 대시보드 강조색(#4472C4)을 그대로 쓰되 명도만 넓혀 썼다. */
+  .hero {
+    background: linear-gradient(135deg, #32508a 0%, #4472C4 58%, #5d89d8 100%);
+    border-radius: 12px; overflow: hidden; color: #fff;
+    box-shadow: 0 6px 20px rgba(45,74,128,.26);
+    margin-bottom: 32px;
+  }
+  .hero-body { padding: 36px 32px 30px; }
   .eyebrow {
-    font-size: 12px; font-weight: 700; letter-spacing: .08em;
-    color: var(--accent); text-transform: uppercase; margin-bottom: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: .1em;
+    color: rgba(255,255,255,.75); text-transform: uppercase; margin-bottom: 10px;
   }
-  h1 { font-size: 27px; line-height: 1.3; margin: 0 0 12px; letter-spacing: -.01em; }
-  .lede { font-size: 15.5px; color: var(--muted); margin: 0; max-width: 62ch; }
+  h1 { font-size: 30px; line-height: 1.28; margin: 0 0 14px; letter-spacing: -.02em; color: #fff; }
+  .lede { font-size: 15.5px; color: rgba(255,255,255,.9); margin: 0; max-width: 62ch; }
 
-  /* 숫자 줄 */
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 32px; }
-  .stat {
-    flex: 1; min-width: 116px; background: var(--card); border-radius: 8px;
-    padding: 13px 16px; box-shadow: var(--shadow);
+  /* 숫자 줄 - 히어로 안에 붙여 한 덩어리로 보이게 한다.
+     칸 사이 1px 간격으로 컨테이너 배경이 비쳐 나와 구분선이 된다. */
+  .hero-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: rgba(255,255,255,.2);
+    border-top: 1px solid rgba(255,255,255,.2);
   }
-  .stat b { display: block; font-size: 21px; line-height: 1.2; letter-spacing: -.02em; }
-  .stat span { font-size: 12px; color: var(--faint); }
+  /* 칸을 밝히면 숫자 줄이 본문보다 떠서 위계가 뒤집힌다. 어둡게 눌러
+     띠는 뒤로 물러나고 흰 숫자가 앞으로 나오게 한다. */
+  .stat { background: rgba(16,34,68,.26); padding: 16px 20px; }
+  .stat b { display: block; font-size: 23px; line-height: 1.2; letter-spacing: -.02em; color: #fff; }
+  .stat span { font-size: 12px; color: rgba(255,255,255,.8); }
 
   /* 공통 */
   section { margin-bottom: 30px; }
@@ -122,29 +133,33 @@
 
   @media (max-width: 560px) {
     h1 { font-size: 23px; }
-    .stat b { font-size: 19px; }
+    .hero-body { padding: 28px 22px 24px; }
+    .hero-stats { grid-template-columns: repeat(2, 1fr); }
+    .stat { padding: 14px 18px; }
+    .stat b { font-size: 20px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <header>
-    <div class="eyebrow">한국 매크로 대시보드</div>
-    <h1>흩어져 있는 경제지표를<br>한 화면에서</h1>
-    <p class="lede">
-      관세청·한국은행·한국거래소·FRED에 따로따로 올라오는 지표를
-      하루 세 번 자동으로 모아 한 페이지에 그립니다.
-      매번 기관 사이트를 돌며 찾아 옮겨 적을 필요가 없습니다.
-    </p>
+  <header class="hero">
+    <div class="hero-body">
+      <div class="eyebrow">한국 매크로 대시보드</div>
+      <h1>흩어져 있는 경제지표를<br>한 화면에서</h1>
+      <p class="lede">
+        관세청·한국은행·한국거래소·FRED에 따로따로 올라오는 지표를
+        하루 세 번 자동으로 모아 한 페이지에 그립니다.
+        매번 기관 사이트를 돌며 찾아 옮겨 적을 필요가 없습니다.
+      </p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b>34</b><span>개 차트</span></div>
+      <div class="stat"><b>9</b><span>개 섹션</span></div>
+      <div class="stat"><b>10년</b><span>치 시계열</span></div>
+      <div class="stat"><b>하루 3회</b><span>자동 갱신</span></div>
+    </div>
   </header>
-
-  <div class="stats">
-    <div class="stat"><b>34</b><span>개 차트</span></div>
-    <div class="stat"><b>9</b><span>개 섹션</span></div>
-    <div class="stat"><b>10년</b><span>치 시계열</span></div>
-    <div class="stat"><b>하루 3회</b><span>자동 갱신</span></div>
-  </div>
 
   <section>
     <h2>이런 게 궁금할 때</h2>
